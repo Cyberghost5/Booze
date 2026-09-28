@@ -82,6 +82,7 @@ const customForm = useForm({
     cost_price: '',
     selling_price: '',
     stock_level: 12,
+    is_chilled: true,
     description: '',
     image_url: '',
     image: null,
@@ -94,6 +95,7 @@ const editForm = useForm({
     cost_price: 0,
     selling_price: 0,
     stock_level: 0,
+    is_chilled: true,
     description: '',
     image_url: '',
     image: null,
@@ -138,6 +140,12 @@ const updateStockLevel = (product, newLevel) => {
     );
 };
 
+const toggleChilledStatus = (product) => {
+    router.patch(route('vendor.inventory.toggle-chilled', product.id), {}, {
+        preserveScroll: true,
+    });
+};
+
 // Open Global Stocking Modal
 const openGlobalModal = (product) => {
     selectedGlobalProduct.value = product;
@@ -178,6 +186,7 @@ const openEditModal = (product) => {
     editForm.cost_price = product.cost_price;
     editForm.selling_price = product.selling_price;
     editForm.stock_level = product.stock_level;
+    editForm.is_chilled = Boolean(product.is_chilled);
     editForm.description = product.description || '';
     editForm.image_url = product.image_url || '';
     showEditModal.value = true;
@@ -373,6 +382,7 @@ const deleteProduct = (product) => {
                                     <tr>
                                         <th class="px-6 py-4">Item</th>
                                         <th class="px-6 py-4">Category</th>
+                                        <th class="px-6 py-4">Temp</th>
                                         <th class="px-6 py-4">Cost Price (COGS)</th>
                                         <th class="px-6 py-4">Selling Price</th>
                                         <th class="px-6 py-4">Margin / Unit</th>
@@ -406,6 +416,21 @@ const deleteProduct = (product) => {
                                             <span class="rounded-full bg-amber-500/10 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
                                                 {{ item.category?.name || 'Beverage' }}
                                             </span>
+                                        </td>
+
+                                        <td class="px-6 py-4">
+                                            <button
+                                                @click="toggleChilledStatus(item)"
+                                                :title="item.is_chilled ? 'Click to switch to Room Temp' : 'Click to switch to Ice-Cold'"
+                                                :class="[
+                                                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition border',
+                                                    item.is_chilled
+                                                        ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20'
+                                                        : 'bg-gray-800 text-gray-400 border-gray-700 hover:bg-gray-700'
+                                                ]"
+                                            >
+                                                <span>{{ item.is_chilled ? '❄️ Ice-Cold' : '🌡️ Room Temp' }}</span>
+                                            </button>
                                         </td>
 
                                         <td class="px-6 py-4 text-gray-700 dark:text-gray-300">

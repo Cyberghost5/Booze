@@ -7,6 +7,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    deliveryLocations: {
+        type: Array,
+        default: () => [],
+    },
     user: {
         type: Object,
         required: true,
@@ -17,6 +21,44 @@ const activeTab = ref('orders'); // 'orders' or 'profile'
 const statusFilter = ref('all');
 const isLocating = ref(false);
 const locationStatus = ref('');
+const isAddingLocation = ref(false);
+
+const locationForm = useForm({
+    label: 'Hostel / Room',
+    address: '',
+    landmark: '',
+    latitude: 10.2847,
+    longitude: 9.7915,
+    is_default: true,
+});
+
+const saveLocation = () => {
+    locationForm.post(route('consumer.delivery-locations.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            isAddingLocation.value = false;
+            locationForm.reset('address', 'landmark');
+        },
+    });
+};
+
+const deleteLocation = (id) => {
+    if (confirm('Delete this saved location?')) {
+        useForm({}).delete(route('consumer.delivery-locations.destroy', id), {
+            preserveScroll: true,
+        });
+    }
+};
+
+const setDefaultLocation = (id) => {
+    useForm({}).patch(route('consumer.delivery-locations.set-default', id), {
+        preserveScroll: true,
+    });
+};
+
+const reorderPastOrder = (orderId) => {
+    useForm({}).post(route('consumer.orders.reorder', orderId));
+};
 
 const detectCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -304,8 +346,18 @@ const formatDate = (dateStr) => {
                                 </p>
                             </div>
 
-                            <div class="flex items-center space-x-3">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button
+                                    v-if="order.status === 'delivered' || order.status === 'cancelled'"
+                                    type="button"
+                                    @click="reorderPastOrder(order.id)"
+                                    class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold px-3 py-2 rounded-xl transition-colors inline-flex items-center space-x-1 shadow"
+                                    title="Add items from this past order to cart and checkout"
+                                >
+                                    <span>🔄 1-Tap Reorder</span>
+                                </button>
                                 <Link 
+                                    v-if="order.status !== 'cancelled'"
                                     :href="route('consumer.orders.show', order.id)" 
                                     class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl transition-colors inline-flex items-center space-x-1"
                                 >
@@ -391,6 +443,116 @@ const formatDate = (dateStr) => {
                                 class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500"
                             />
                             <span v-if="profileForm.errors.email" class="text-xs text-rose-400 mt-1 block">{{ profileForm.errors.email }}</span>
+                        </div>
+                    </div>
+
+                    <!-- SAVED DELIVERY LOCATIONS MANAGER -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h2 class="text-lg font-bold text-amber-400 flex items-center space-x-2">
+                                    <span>🏢 Saved Delivery Locations (Hostels & Lodges)</span>
+                                </h2>
+                                <p class="text-xs text-slate-400 mt-0.5">
+                                    Save multiple addresses (e.g., Hostel Room, Library, Gate) for 1-tap checkout selection.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                @click="isAddingLocation = !isAddingLocation"
+                                class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg transition-colors"
+                            >
+                                {{ isAddingLocation ? 'Cancel' : '+ Add Location' }}
+                            </button>
+                        </div>
+
+                        <!-- Add Location Form -->
+                        <div v-if="isAddingLocation" class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Location Label</label>
+                                    <input
+                                        v-model="locationForm.label"
+                                        type="text"
+                                        placeholder="e.g. Hostel Room 12"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-slate-300 mb-1">Landmark (Optional)</label>
+                                    <input
+                                        v-model="locationForm.landmark"
+                                        type="text"
+                                        placeholder="e.g. Opposite Bayan Gari Lodge"
+                                        class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-slate-300 mb-1">Full Delivery Address</label>
+                                <textarea
+                                    v-model="locationForm.address"
+                                    rows="2"
+                                    placeholder="e.g. Block C, Room 14, Bauchi Student Hostel, Gwallameji"
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100"
+                                ></textarea>
+                            </div>
+                            <div class="flex items-center justify-between pt-1">
+                                <label class="flex items-center space-x-2 text-xs text-slate-300">
+                                    <input v-model="locationForm.is_default" type="checkbox" class="rounded bg-slate-900 border-slate-700 text-amber-500" />
+                                    <span>Set as primary default address</span>
+                                </label>
+                                <button
+                                    type="button"
+                                    @click="saveLocation"
+                                    :disabled="locationForm.processing || !locationForm.address"
+                                    class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-lg disabled:opacity-50 transition"
+                                >
+                                    Save Address
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Locations List -->
+                        <div v-if="deliveryLocations.length === 0 && !isAddingLocation" class="text-xs text-slate-500 italic py-2">
+                            No saved locations yet. Add a location to pick it in 1-tap during checkout.
+                        </div>
+
+                        <div v-else class="space-y-2">
+                            <div
+                                v-for="loc in deliveryLocations"
+                                :key="loc.id"
+                                class="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 gap-2"
+                            >
+                                <div>
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-extrabold text-xs text-amber-400">{{ loc.label }}</span>
+                                        <span v-if="loc.is_default" class="text-[10px] bg-emerald-950 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">
+                                            📍 Default
+                                        </span>
+                                    </div>
+                                    <p class="text-xs text-slate-300 mt-1">{{ loc.address }}</p>
+                                    <p v-if="loc.landmark" class="text-[11px] text-amber-300/80 mt-0.5">Landmark: {{ loc.landmark }}</p>
+                                </div>
+
+                                <div class="flex items-center space-x-2 self-end sm:self-auto">
+                                    <button
+                                        v-if="!loc.is_default"
+                                        type="button"
+                                        @click="setDefaultLocation(loc.id)"
+                                        class="text-[11px] bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1 rounded-lg border border-slate-700"
+                                    >
+                                        Set Default
+                                    </button>
+                                    <button
+                                        type="button"
+                                        @click="deleteLocation(loc.id)"
+                                        class="text-[11px] text-rose-400 hover:text-rose-300 px-2 py-1"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
 

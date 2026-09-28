@@ -25,8 +25,11 @@ class DashboardController extends Controller
             ->latest()
             ->get();
 
+        $deliveryLocations = $user->deliveryLocations()->latest()->get();
+
         return Inertia::render('Consumer/Dashboard', [
             'orders' => $orders,
+            'deliveryLocations' => $deliveryLocations,
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -65,7 +68,7 @@ class DashboardController extends Controller
             'default_longitude' => $validated['default_longitude'] ?? null,
         ];
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $updateData['password'] = Hash::make($validated['password']);
         }
 

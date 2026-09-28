@@ -107,7 +107,7 @@ class InventoryController extends Controller
                 'category_id' => $globalProduct->category_id,
                 'vendor_id' => $vendor->id,
                 'name' => $globalProduct->name,
-                'slug' => Str::slug($globalProduct->name . '-' . $vendor->id),
+                'slug' => Str::slug($globalProduct->name.'-'.$vendor->id),
                 'description' => $globalProduct->description,
                 'image_url' => $globalProduct->image_url,
                 'unit' => $globalProduct->unit,
@@ -116,6 +116,7 @@ class InventoryController extends Controller
                 'stock_level' => $validated['stock_level'],
                 'is_global' => false,
                 'is_active' => true,
+                'is_chilled' => $globalProduct->is_chilled ?? true,
             ]);
         }
 
@@ -133,6 +134,7 @@ class InventoryController extends Controller
             'cost_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock_level' => 'required|integer|min:0',
+            'is_chilled' => 'nullable|boolean',
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:2048',
             'image_url' => 'nullable|url',
@@ -149,7 +151,7 @@ class InventoryController extends Controller
             'category_id' => $validated['category_id'],
             'vendor_id' => $vendor->id,
             'name' => $validated['name'],
-            'slug' => Str::slug($validated['name'] . '-' . $vendor->id),
+            'slug' => Str::slug($validated['name'].'-'.$vendor->id),
             'description' => $validated['description'] ?? null,
             'image_url' => $imageUrl,
             'unit' => $validated['unit'],
@@ -158,6 +160,7 @@ class InventoryController extends Controller
             'stock_level' => $validated['stock_level'],
             'is_global' => false,
             'is_active' => true,
+            'is_chilled' => $request->boolean('is_chilled', true),
         ]);
 
         return redirect()->back()->with('success', "Custom product '{$validated['name']}' created and stocked successfully!");
@@ -180,6 +183,21 @@ class InventoryController extends Controller
         return redirect()->back()->with('success', "Stock level for '{$product->name}' updated to {$validated['stock_level']}.");
     }
 
+    public function toggleChilled(Request $request, Product $product)
+    {
+        if ($product->vendor_id !== $request->user()->id) {
+            abort(403, 'Unauthorized product access.');
+        }
+
+        $product->update([
+            'is_chilled' => ! $product->is_chilled,
+        ]);
+
+        $status = $product->is_chilled ? 'Ice-Cold ❄️' : 'Room Temp 🌡️';
+
+        return redirect()->back()->with('success', "Temperature status for '{$product->name}' updated to {$status}.");
+    }
+
     public function update(Request $request, Product $product)
     {
         if ($product->vendor_id !== $request->user()->id) {
@@ -193,6 +211,7 @@ class InventoryController extends Controller
             'cost_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
             'stock_level' => 'required|integer|min:0',
+            'is_chilled' => 'nullable|boolean',
             'description' => 'nullable|string',
             'image' => 'nullable|image|max:2048',
             'image_url' => 'nullable|url',
@@ -205,6 +224,7 @@ class InventoryController extends Controller
             'cost_price' => $validated['cost_price'],
             'selling_price' => $validated['selling_price'],
             'stock_level' => $validated['stock_level'],
+            'is_chilled' => $request->boolean('is_chilled', $product->is_chilled),
             'description' => $validated['description'] ?? $product->description,
         ];
 

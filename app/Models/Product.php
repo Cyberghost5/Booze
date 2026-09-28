@@ -25,6 +25,7 @@ class Product extends Model
         'stock_level',
         'is_global',
         'is_active',
+        'is_chilled',
     ];
 
     protected function casts(): array
@@ -35,6 +36,7 @@ class Product extends Model
             'stock_level' => 'integer',
             'is_global' => 'boolean',
             'is_active' => 'boolean',
+            'is_chilled' => 'boolean',
         ];
     }
 

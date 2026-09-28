@@ -27,11 +27,7 @@ import {
     Truck
 } from 'lucide-vue-next';
 
-const lastOrderId = ref(null);
-
-onMounted(() => {
-    lastOrderId.value = localStorage.getItem('booze_last_order_id');
-});
+// Active Order state passed from Inertia props
 
 const props = defineProps({
     products: {
@@ -53,6 +49,14 @@ const props = defineProps({
     activeOrder: {
         type: Object,
         default: () => null,
+    },
+    deliveryLocations: {
+        type: Array,
+        default: () => [],
+    },
+    partyBundles: {
+        type: Array,
+        default: () => [],
     },
 });
 
@@ -104,12 +108,54 @@ onMounted(() => {
 // Search & Filter State
 const searchQuery = ref(props.filters.search || '');
 const selectedCategory = ref(props.filters.category_id || '');
+const chilledOnly = ref(Boolean(props.filters.chilled_only));
+const isMobileSearchOpen = ref(false);
+const isDesktopSuggestionsOpen = ref(false);
 
-const handleFilterChange = (catId = selectedCategory.value) => {
+const searchSuggestions = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase();
+    if (!query) return props.products.slice(0, 5);
+    return props.products.filter(p =>
+        p.name.toLowerCase().includes(query) ||
+        (p.category?.name && p.category.name.toLowerCase().includes(query)) ||
+        (p.description && p.description.toLowerCase().includes(query))
+    ).slice(0, 6);
+});
+
+const selectSuggestion = (product) => {
+    searchQuery.value = product.name;
+    handleFilterChange();
+    isMobileSearchOpen.value = false;
+    isDesktopSuggestionsOpen.value = false;
+};
+
+const clearSearch = () => {
+    searchQuery.value = '';
+    handleFilterChange();
+};
+
+const toggleChilledOnly = () => {
+    chilledOnly.value = !chilledOnly.value;
+    handleFilterChange(selectedCategory.value, chilledOnly.value);
+};
+
+const resetAllFilters = () => {
+    selectedCategory.value = '';
+    chilledOnly.value = false;
+    searchQuery.value = '';
+    handleFilterChange('', false);
+};
+
+const handleFilterChange = (catId = selectedCategory.value, isChilled = chilledOnly.value) => {
     selectedCategory.value = catId;
+    chilledOnly.value = isChilled;
     router.get(
         route('consumer.catalog'),
-        { search: searchQuery.value, category_id: selectedCategory.value },
+        {
+            search: searchQuery.value,
+            category_id: selectedCategory.value,
+            chilled_only: chilledOnly.value ? 1 : 0
+        },
         { preserveState: true, replace: true }
     );
 };
@@ -133,7 +179,15 @@ const saveCart = () => {
 };
 
 onMounted(() => {
+    checkAgeVerification();
     loadCart();
+
+    const flashReorder = page.props.flash?.reorderCart;
+    if (flashReorder && Array.isArray(flashReorder) && flashReorder.length > 0) {
+        cart.value = flashReorder;
+        saveCart();
+        isCartOpen.value = true;
+    }
 });
 
 const addToCart = (product) => {
@@ -154,6 +208,31 @@ const addToCart = (product) => {
         });
     }
     saveCart();
+};
+
+const addBundleToCart = (bundle) => {
+    if (!bundle.items || bundle.items.length === 0) return;
+
+    bundle.items.forEach((item) => {
+        if (item.product && item.product.stock_level > 0) {
+            const existing = cart.value.find((i) => i.product_id === item.product.id);
+            if (existing) {
+                existing.quantity = Math.min(existing.quantity + item.quantity, item.product.stock_level);
+            } else {
+                cart.value.push({
+                    product_id: item.product.id,
+                    name: item.product.name,
+                    selling_price: parseFloat(item.product.selling_price),
+                    image_url: item.product.image_url,
+                    unit: item.product.unit,
+                    stock_level: item.product.stock_level,
+                    quantity: Math.min(item.quantity, item.product.stock_level),
+                });
+            }
+        }
+    });
+
+    saveCart();
     isCartOpen.value = true;
 };
 
@@ -171,6 +250,11 @@ const updateQuantity = (productId, delta) => {
 const removeFromCart = (productId) => {
     cart.value = cart.value.filter((i) => i.product_id !== productId);
     saveCart();
+};
+
+const getItemQuantityInCart = (productId) => {
+    const item = cart.value.find((i) => i.product_id === productId);
+    return item ? item.quantity : 0;
 };
 
 const cartSubtotal = computed(() => {
@@ -411,18 +495,61 @@ const getCategoryIcon = (slug) => {
                 </div>
 
                 <!-- Right Header Actions -->
-                <div class="flex items-center gap-4">
-                    <!-- Search Bar -->
+                <div class="flex items-center gap-2.5 sm:gap-4">
+                    <!-- Desktop Search Bar with Live Suggestions Dropdown -->
                     <div class="relative hidden sm:block w-64">
                         <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
                         <input
                             v-model="searchQuery"
+                            @focus="isDesktopSuggestionsOpen = true"
+                            @blur="setTimeout(() => isDesktopSuggestionsOpen = false, 200)"
                             @input="handleFilterChange()"
                             type="text"
                             placeholder="Search drinks..."
-                            class="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-4 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+                            class="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 pl-9 pr-8 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
                         />
+                        <button
+                            v-if="searchQuery"
+                            @click="clearSearch"
+                            class="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
+
+                        <!-- Desktop Suggestions Dropdown Popup -->
+                        <div
+                            v-if="isDesktopSuggestionsOpen && searchSuggestions.length > 0"
+                            class="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl border border-zinc-800 bg-zinc-900/95 p-2 shadow-2xl backdrop-blur-xl space-y-1 max-h-80 overflow-y-auto"
+                        >
+                            <p class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500">
+                                {{ searchQuery ? 'Suggested Products' : 'Popular Drinks' }}
+                            </p>
+                            <div
+                                v-for="item in searchSuggestions"
+                                :key="item.id"
+                                @mousedown.prevent="selectSuggestion(item)"
+                                class="flex items-center justify-between p-2 rounded-xl hover:bg-zinc-800/80 cursor-pointer transition text-xs"
+                            >
+                                <div class="flex items-center gap-2.5">
+                                    <img :src="item.image_url" :alt="item.name" class="h-8 w-8 rounded-lg object-cover bg-zinc-950" />
+                                    <div>
+                                        <p class="font-bold text-white">{{ item.name }}</p>
+                                        <p class="text-[10px] text-amber-500">{{ item.category?.name }}</p>
+                                    </div>
+                                </div>
+                                <span class="font-mono font-bold text-zinc-300">{{ formatNaira(item.selling_price) }}</span>
+                            </div>
+                        </div>
                     </div>
+
+                    <!-- Mobile Search Trigger Button -->
+                    <button
+                        @click="isMobileSearchOpen = true"
+                        class="sm:hidden flex h-10 w-10 items-center justify-center rounded-xl border border-zinc-800 bg-zinc-900 text-amber-400 hover:border-amber-500/50 hover:bg-zinc-800 transition shadow"
+                        title="Search Drinks"
+                    >
+                        <Search class="h-4 w-4" />
+                    </button>
 
                     <!-- My Account / Dashboard Link -->
                     <Link
@@ -435,10 +562,10 @@ const getCategoryIcon = (slug) => {
                         <span class="md:hidden">Account</span>
                     </Link>
 
-                    <!-- Track Order Button if previous order exists -->
+                    <!-- Track Active Order Button if user is logged in and has an active order -->
                     <Link
-                        v-if="lastOrderId"
-                        :href="route('consumer.orders.show', lastOrderId)"
+                        v-if="authUser && activeOrder"
+                        :href="route('consumer.orders.show', activeOrder.id)"
                         class="flex items-center gap-1.5 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs font-bold text-amber-400 hover:bg-amber-500/20 transition"
                     >
                         <Truck class="h-4 w-4" />
@@ -467,7 +594,7 @@ const getCategoryIcon = (slug) => {
         <main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
             <!-- ACTIVE ORDER NOTIFICATION BANNER -->
             <div
-                v-if="activeOrder"
+                v-if="authUser && activeOrder"
                 class="mb-8 rounded-3xl border border-amber-500/40 bg-amber-500/10 p-5 backdrop-blur flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl shadow-amber-500/5"
             >
                 <div class="flex items-center gap-3">
@@ -511,13 +638,98 @@ const getCategoryIcon = (slug) => {
                 </div>
             </div>
 
+            <!-- PARTY BUNDLES & COMBO PACKS SECTION -->
+            <div v-if="partyBundles && partyBundles.length > 0" class="mb-10">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-xl font-black text-white flex items-center gap-2">
+                            <span>📦 Party Bundles & Combo Packs</span>
+                            <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-0.5 rounded-full font-bold">
+                                SPECIAL DISCOUNT
+                            </span>
+                        </h3>
+                        <p class="text-xs text-zinc-400 mt-0.5">
+                            Curated combo bundles for Gwallameji student lodges & weekend celebrations
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div
+                        v-for="bundle in partyBundles"
+                        :key="bundle.id"
+                        class="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 via-zinc-900 to-zinc-900 p-5 backdrop-blur transition-all duration-300 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-500/10"
+                    >
+                        <div>
+                            <!-- Bundle Image & Badge -->
+                            <div class="relative aspect-video w-full overflow-hidden rounded-2xl bg-zinc-950 mb-4">
+                                <img
+                                    :src="bundle.image_url"
+                                    :alt="bundle.title"
+                                    class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                                />
+                                <span class="absolute top-2 left-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-black shadow-lg">
+                                    {{ bundle.badge_text }}
+                                </span>
+                            </div>
+
+                            <!-- Title & Price -->
+                            <div class="flex items-start justify-between gap-2">
+                                <h4 class="text-base font-black text-white group-hover:text-amber-400 transition leading-snug">
+                                    {{ bundle.title }}
+                                </h4>
+                            </div>
+
+                            <p class="mt-1 text-xs text-zinc-300">
+                                {{ bundle.description }}
+                            </p>
+
+                            <!-- Included Items List -->
+                            <div class="mt-3 rounded-xl bg-zinc-950/80 p-3 border border-zinc-800/80">
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block mb-1">
+                                    Bundle Drinks Included:
+                                </span>
+                                <ul class="space-y-1 text-xs text-zinc-300">
+                                    <li v-for="item in bundle.items" :key="item.id" class="flex items-center gap-1.5">
+                                        <span class="font-bold text-amber-400">✓ {{ item.quantity }}x</span>
+                                        <span>{{ item.product?.name }}</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Price & 1-Click Add Button -->
+                        <div class="mt-5 flex items-center justify-between border-t border-zinc-800 pt-4">
+                            <div>
+                                <span class="text-xs text-zinc-500 line-through block font-mono">
+                                    {{ formatNaira(bundle.original_price) }}
+                                </span>
+                                <span class="text-xl font-black text-amber-400 font-mono">
+                                    {{ formatNaira(bundle.price) }}
+                                </span>
+                            </div>
+
+                            <button
+                                type="button"
+                                @click="addBundleToCart(bundle)"
+                                class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-4 py-2.5 transition shadow-lg active:scale-95"
+                            >
+                                <ShoppingBag class="w-4 h-4" />
+                                Add Combo to Cart
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- CATEGORY FILTER TABS -->
             <div class="mb-8 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
                 <button
-                    @click="handleFilterChange('')"
+                    type="button"
+                    @click="resetAllFilters"
                     :class="[
                         'flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition shrink-0',
-                        selectedCategory === ''
+                        selectedCategory === '' && !chilledOnly
                             ? 'bg-amber-500 text-black shadow-lg shadow-amber-500/20'
                             : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white border border-zinc-800'
                     ]"
@@ -527,8 +739,21 @@ const getCategoryIcon = (slug) => {
                 </button>
 
                 <button
+                    @click="toggleChilledOnly"
+                    :class="[
+                        'flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition shrink-0 border',
+                        chilledOnly
+                            ? 'bg-cyan-500 text-black border-cyan-400 shadow-lg shadow-cyan-500/20'
+                            : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white border-zinc-800'
+                    ]"
+                >
+                    <span>❄️ Ice-Cold Only</span>
+                </button>
+
+                <button
                     v-for="cat in categories"
                     :key="cat.id"
+                    type="button"
                     @click="handleFilterChange(cat.id)"
                     :class="[
                         'flex items-center gap-2 rounded-2xl px-5 py-3 text-sm font-bold transition shrink-0',
@@ -567,7 +792,19 @@ const getCategoryIcon = (slug) => {
                                 {{ product.unit }}
                             </span>
                             <span
-                                v-if="product.stock_level <= 10"
+                                v-if="product.is_chilled"
+                                class="absolute bottom-2 left-2 rounded-full bg-cyan-950/90 border border-cyan-500/40 px-2.5 py-0.5 text-[11px] font-bold text-cyan-300 backdrop-blur flex items-center gap-1 shadow-md"
+                            >
+                                ❄️ Ice-Cold
+                            </span>
+                            <span
+                                v-if="getItemQuantityInCart(product.id) > 0"
+                                class="absolute top-2 right-2 rounded-full bg-amber-500 text-black px-2.5 py-0.5 text-xs font-black shadow-lg flex items-center gap-1"
+                            >
+                                ✓ {{ getItemQuantityInCart(product.id) }} in Cart
+                            </span>
+                            <span
+                                v-else-if="product.stock_level <= 10"
                                 class="absolute top-2 right-2 rounded-full bg-amber-500/90 px-2.5 py-0.5 text-xs font-bold text-black"
                             >
                                 Only {{ product.stock_level }} left
@@ -592,9 +829,30 @@ const getCategoryIcon = (slug) => {
                             <span class="text-lg font-black text-white">{{ formatNaira(product.selling_price) }}</span>
                         </div>
 
+                        <!-- Card Quantity Selector if Item is in Cart -->
+                        <div v-if="getItemQuantityInCart(product.id) > 0" class="flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/50 rounded-xl p-1">
+                            <button
+                                @click="updateQuantity(product.id, -1)"
+                                class="flex h-7 w-7 items-center justify-center rounded-lg bg-zinc-950 text-amber-400 hover:bg-amber-500 hover:text-black transition"
+                            >
+                                <Minus class="h-3.5 w-3.5" />
+                            </button>
+                            <span class="px-1.5 text-xs font-black text-amber-300 font-mono">
+                                {{ getItemQuantityInCart(product.id) }}
+                            </span>
+                            <button
+                                @click="updateQuantity(product.id, 1)"
+                                :disabled="getItemQuantityInCart(product.id) >= product.stock_level"
+                                class="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500 text-black hover:bg-amber-400 disabled:opacity-40 transition"
+                            >
+                                <Plus class="h-3.5 w-3.5" />
+                            </button>
+                        </div>
+
                         <button
+                            v-else
                             @click="addToCart(product)"
-                            class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-black text-black shadow hover:bg-amber-400 active:scale-95"
+                            class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-black text-black shadow hover:bg-amber-400 active:scale-95 transition"
                         >
                             <Plus class="h-4 w-4" />
                             Add
@@ -603,6 +861,102 @@ const getCategoryIcon = (slug) => {
                 </div>
             </div>
         </main>
+
+        <!-- MOBILE SEARCH POPUP DROPDOWN MODAL -->
+        <div v-if="isMobileSearchOpen" class="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-md p-4 pt-16">
+            <div class="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in duration-200">
+                <!-- Search Input Bar -->
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-1">
+                        <Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+                        <input
+                            v-model="searchQuery"
+                            @input="handleFilterChange()"
+                            type="text"
+                            placeholder="Type drink name (e.g. Heineken, Wine)..."
+                            autofocus
+                            class="w-full rounded-2xl border border-zinc-700 bg-zinc-950 pl-9 pr-8 py-3 text-sm text-white placeholder-zinc-500 focus:border-amber-500 focus:outline-none"
+                        />
+                        <button
+                            v-if="searchQuery"
+                            @click="clearSearch"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"
+                        >
+                            <X class="h-4 w-4" />
+                        </button>
+                    </div>
+                    <button
+                        @click="isMobileSearchOpen = false"
+                        class="rounded-xl border border-zinc-800 bg-zinc-950 px-3.5 py-3 text-xs font-bold text-zinc-300 hover:text-white"
+                    >
+                        Close
+                    </button>
+                </div>
+
+                <!-- Live Suggestions List -->
+                <div>
+                    <div class="px-1 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-500 flex items-center justify-between mb-1">
+                        <span>{{ searchQuery ? 'Matching Suggestions' : 'Popular Drinks' }}</span>
+                        <span class="text-amber-500 font-normal">({{ searchSuggestions.length }} items)</span>
+                    </div>
+
+                    <div v-if="searchSuggestions.length === 0" class="p-4 text-center text-xs text-zinc-500">
+                        No matching drinks found for "{{ searchQuery }}"
+                    </div>
+
+                    <div v-else class="space-y-1.5 max-h-72 overflow-y-auto pt-1">
+                        <div
+                            v-for="item in searchSuggestions"
+                            :key="item.id"
+                            @click="selectSuggestion(item)"
+                            class="flex items-center justify-between p-2.5 rounded-2xl bg-zinc-950/80 border border-zinc-800/60 hover:border-amber-500/50 cursor-pointer transition text-xs"
+                        >
+                            <div class="flex items-center gap-3">
+                                <img :src="item.image_url" :alt="item.name" class="h-10 w-10 rounded-xl object-cover bg-zinc-900" />
+                                <div>
+                                    <p class="font-bold text-white text-sm">{{ item.name }}</p>
+                                    <span class="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded-full font-semibold">
+                                        {{ item.category?.name || 'Beverage' }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <span class="block font-mono font-black text-white text-sm">{{ formatNaira(item.selling_price) }}</span>
+                                <span class="text-[10px] text-amber-500 font-bold">Tap to filter</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- FLOATING BOTTOM QUICK CART BAR -->
+        <div
+            v-if="cartTotalCount > 0 && !isCartOpen && !isCheckoutOpen"
+            class="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-lg rounded-2xl border border-amber-500/50 bg-zinc-900/95 p-3.5 backdrop-blur-xl shadow-2xl flex items-center justify-between gap-3"
+        >
+            <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 text-black font-black shadow">
+                    <ShoppingBag class="h-5 w-5" />
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-white">
+                        <strong class="text-amber-400 font-mono">{{ cartTotalCount }}</strong> item(s) selected
+                    </p>
+                    <p class="text-xs font-black text-amber-400 font-mono">
+                        Subtotal: {{ formatNaira(cartSubtotal) }}
+                    </p>
+                </div>
+            </div>
+
+            <button
+                @click="isCartOpen = true"
+                class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-black shadow hover:bg-amber-400 transition"
+            >
+                <span>View Cart & Checkout</span>
+                <ArrowRight class="h-4 w-4" />
+            </button>
+        </div>
 
         <!-- MANDATORY 18+ DOB AGE VERIFICATION GATE MODAL -->
         <div v-if="!isAgeVerified" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4">
@@ -924,6 +1278,30 @@ const getCategoryIcon = (slug) => {
                                 required
                                 class="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-2.5 text-sm text-white focus:border-amber-500 focus:outline-none"
                             />
+                        </div>
+                    </div>
+
+                    <!-- 1-TAP SAVED LOCATIONS QUICK SELECTOR -->
+                    <div v-if="deliveryLocations && deliveryLocations.length > 0" class="rounded-2xl bg-zinc-950 p-3.5 border border-zinc-800 space-y-2">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-amber-400 block">
+                            📍 Pick Saved Delivery Location
+                        </span>
+                        <div class="flex flex-wrap gap-2">
+                            <button
+                                v-for="loc in deliveryLocations"
+                                :key="loc.id"
+                                type="button"
+                                @click="checkoutForm.delivery_address = loc.address; if (loc.latitude) checkoutForm.latitude = Number(loc.latitude); if (loc.longitude) checkoutForm.longitude = Number(loc.longitude);"
+                                :class="[
+                                    'px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border',
+                                    checkoutForm.delivery_address === loc.address
+                                        ? 'bg-amber-500 text-black border-amber-400 shadow-md'
+                                        : 'bg-zinc-900 text-zinc-300 hover:text-white border-zinc-800'
+                                ]"
+                            >
+                                <span>{{ loc.label }}</span>
+                                <span v-if="loc.is_default" class="text-[10px] opacity-80">(Default)</span>
+                            </button>
                         </div>
                     </div>
 

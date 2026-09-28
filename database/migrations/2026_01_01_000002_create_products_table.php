@@ -22,6 +22,7 @@ return new class extends Migration
             $table->integer('stock_level')->default(0);
             $table->boolean('is_global')->default(false); // Global catalog vs vendor custom item
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_chilled')->default(true);
             $table->timestamps();
         });
     }

@@ -6,11 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Services\OrderNotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
-use Inertia\Response;
 
 class CheckoutController extends Controller
 {
@@ -94,7 +94,7 @@ class CheckoutController extends Controller
         $order = Order::create([
             'user_id' => $user->id,
             'vendor_id' => $vendorId,
-            'order_number' => 'BZ-' . strtoupper(Str::random(8)),
+            'order_number' => 'BZ-'.strtoupper(Str::random(8)),
             'status' => 'pending',
             'subtotal' => $subtotal,
             'delivery_fee' => $deliveryFee,
@@ -108,7 +108,7 @@ class CheckoutController extends Controller
         ]);
 
         // Save default address to user profile if requested or if user has no default address yet
-        if (!empty($validated['save_as_default_address']) || empty($user->default_address)) {
+        if (! empty($validated['save_as_default_address']) || empty($user->default_address)) {
             $user->update([
                 'default_address' => $validated['delivery_address'],
                 'default_latitude' => $validated['latitude'],
@@ -132,14 +132,26 @@ class CheckoutController extends Controller
         }
 
         // Send Email & BulkSMS Nigeria Notifications to Customer and Vendor
-        app(\App\Services\OrderNotificationService::class)->sendOrderPlacedNotifications($order);
+        app(OrderNotificationService::class)->sendOrderPlacedNotifications($order);
 
         return redirect()->route('consumer.orders.show', $order->id)
             ->with('success', "Order #{$order->order_number} placed successfully! Notification alerts sent to you and vendor.");
     }
 
-    public function showOrder(Order $order): Response
+    public function showOrder(Request $request, Order $order)
     {
+        $user = $request->user();
+
+        if (! $user) {
+            return redirect()->route('consumer.catalog')->withErrors([
+                'auth' => 'Please log in to view order tracking details.',
+            ]);
+        }
+
+        if ($order->user_id !== $user->id && ! $user->isVendor()) {
+            abort(403, 'Unauthorized access to order tracking details.');
+        }
+
         $order->load(['items.product', 'vendor']);
 
         return Inertia::render('Consumer/OrderShow', [
@@ -173,5 +185,43 @@ class CheckoutController extends Controller
         $order->update(['status' => 'cancelled']);
 
         return redirect()->back()->with('success', "Order #{$order->order_number} cancelled successfully and stock level restored.");
+    }
+
+    public function reorder(Request $request, Order $order)
+    {
+        $user = $request->user();
+
+        if (! $user || $order->user_id !== $user->id) {
+            abort(403, 'Unauthorized reorder action.');
+        }
+
+        $order->load('items.product');
+
+        $reorderCart = [];
+
+        foreach ($order->items as $item) {
+            if ($item->product && $item->product->is_active && $item->product->stock_level > 0) {
+                $qty = min($item->quantity, $item->product->stock_level);
+                $reorderCart[] = [
+                    'product_id' => $item->product->id,
+                    'name' => $item->product->name,
+                    'selling_price' => (float) $item->product->selling_price,
+                    'image_url' => $item->product->image_url,
+                    'unit' => $item->product->unit,
+                    'stock_level' => $item->product->stock_level,
+                    'quantity' => $qty,
+                ];
+            }
+        }
+
+        if (empty($reorderCart)) {
+            return redirect()->back()->withErrors([
+                'cart' => 'None of the items from this past order are currently available in stock.',
+            ]);
+        }
+
+        return redirect()->route('consumer.catalog')
+            ->with('reorderCart', $reorderCart)
+            ->with('success', "Loaded items from Order #{$order->order_number} into your cart!");
     }
 }

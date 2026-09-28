@@ -18,7 +18,9 @@ import {
     ExternalLink,
     ChevronRight,
     AlertCircle,
-    Copy
+    Copy,
+    Download,
+    Sparkles
 } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -76,6 +78,8 @@ const handleDateFilterChange = (filter) => {
     );
 };
 
+import { fireSuccessConfetti } from '@/Utils/confetti';
+
 // Status Update Handler
 const updatingOrderId = ref(null);
 const updateOrderStatus = (order, newStatus) => {
@@ -85,6 +89,11 @@ const updateOrderStatus = (order, newStatus) => {
         { status: newStatus },
         {
             preserveScroll: true,
+            onSuccess: () => {
+                if (newStatus === 'delivered') {
+                    fireSuccessConfetti();
+                }
+            },
             onFinish: () => {
                 updatingOrderId.value = null;
             },
@@ -162,41 +171,62 @@ const getStatusBadge = (status) => {
                     </p>
                 </div>
 
-                <!-- Date Range Filter Tabs -->
-                <div class="flex rounded-xl bg-gray-200/80 p-1 dark:bg-gray-800 self-start sm:self-auto">
-                    <button
-                        @click="handleDateFilterChange('today')"
-                        :class="[
-                            'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
-                            selectedFilter === 'today'
-                                ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-                        ]"
+                <div class="flex flex-wrap items-center gap-3 self-start sm:self-auto">
+                    <!-- Date Range Filter Tabs -->
+                    <div class="flex rounded-xl bg-gray-200/80 p-1 dark:bg-gray-800">
+                        <button
+                            @click="handleDateFilterChange('today')"
+                            :class="[
+                                'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
+                                selectedFilter === 'today'
+                                    ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                            ]"
+                        >
+                            Today
+                        </button>
+                        <button
+                            @click="handleDateFilterChange('7days')"
+                            :class="[
+                                'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
+                                selectedFilter === '7days'
+                                    ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                            ]"
+                        >
+                            Last 7 Days
+                        </button>
+                        <button
+                            @click="handleDateFilterChange('all')"
+                            :class="[
+                                'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
+                                selectedFilter === 'all'
+                                    ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
+                                    : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
+                            ]"
+                        >
+                            All Orders
+                        </button>
+                    </div>
+
+                    <!-- Rider Dispatch View Button -->
+                    <a
+                        :href="route('vendor.orders.rider')"
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-xs font-extrabold text-gray-950 shadow-sm transition hover:bg-amber-400 focus:outline-none"
                     >
-                        Today
-                    </button>
-                    <button
-                        @click="handleDateFilterChange('7days')"
-                        :class="[
-                            'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
-                            selectedFilter === '7days'
-                                ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-                        ]"
+                        <Truck class="h-4 w-4" />
+                        🛵 Rider Dispatch View
+                    </a>
+
+                    <!-- Export CSV Button -->
+                    <a
+                        :href="route('vendor.orders.export-csv', { date: selectedFilter })"
+                        download
+                        class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-emerald-500 focus:outline-none"
                     >
-                        Last 7 Days
-                    </button>
-                    <button
-                        @click="handleDateFilterChange('all')"
-                        :class="[
-                            'px-3 py-1.5 text-xs font-semibold rounded-lg transition',
-                            selectedFilter === 'all'
-                                ? 'bg-white text-gray-900 shadow dark:bg-gray-900 dark:text-white'
-                                : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-                        ]"
-                    >
-                        All Orders
-                    </button>
+                        <Download class="h-4 w-4" />
+                        Export Sales (CSV)
+                    </a>
                 </div>
             </div>
         </template>
@@ -243,19 +273,19 @@ const getStatusBadge = (status) => {
                 </transition>
 
                 <!-- BOOKKEEPING DIGEST SUMMARY CARDS -->
-                <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                     <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Sales Revenue</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Sales</span>
                             <DollarSign class="h-5 w-5 text-emerald-500" />
                         </div>
                         <p class="mt-3 text-2xl font-black text-gray-900 dark:text-white">{{ formatNaira(ledger.totalSales) }}</p>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ ledger.totalOrdersCount }} orders in selected period</span>
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ ledger.totalOrdersCount }} orders in period</span>
                     </div>
 
                     <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Cost of Goods Sold (COGS)</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">COGS</span>
                             <ShoppingBag class="h-5 w-5 text-indigo-500" />
                         </div>
                         <p class="mt-3 text-2xl font-black text-gray-900 dark:text-white">{{ formatNaira(ledger.totalCogs) }}</p>
@@ -273,15 +303,21 @@ const getStatusBadge = (status) => {
                         </span>
                     </div>
 
+                    <div class="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5 shadow-sm">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Bestseller</span>
+                            <Sparkles class="h-5 w-5 text-amber-400" />
+                        </div>
+                        <p class="mt-3 text-sm font-black text-amber-200 truncate" :title="ledger.bestsellerToday">{{ ledger.bestsellerToday || 'No sales yet' }}</p>
+                        <span class="text-xs text-amber-400/80">Top drink in Gwallameji</span>
+                    </div>
+
                     <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-gray-800 dark:bg-gray-900">
                         <div class="flex items-center justify-between">
-                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status Breakdown</span>
+                            <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</span>
                             <Truck class="h-5 w-5 text-amber-500" />
                         </div>
-                        <div class="mt-3 flex items-center justify-between text-xs">
-                            <span class="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-500 font-bold">Pending: {{ ledger.pendingCount }}</span>
-                            <span class="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-500 font-bold">Packed: {{ ledger.packedCount }}</span>
-                            <span class="rounded-full bg-emerald-500/10 px-2 py-0.5 text-emerald-500 font-bold">Delivered: {{ ledger.deliveredCount }}</span>
+                        <div class="mt-3 flex flex-wrap gap-1 text-[11px]">
                         </div>
                     </div>
                 </div>
@@ -406,6 +442,7 @@ const getStatusBadge = (status) => {
 
                                 <!-- ONE-CLICK WHATSAPP DISPATCH BUTTON -->
                                 <button
+                                    v-if="order.status !== 'delivered' && order.status !== 'cancelled'"
                                     @click="dispatchOrder(order)"
                                     class="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-500 active:scale-95"
                                 >
@@ -413,8 +450,8 @@ const getStatusBadge = (status) => {
                                     Dispatch via WhatsApp
                                 </button>
 
-                                <!-- STATUS UPDATE CONTROLS -->
-                                <div class="space-y-1.5 pt-2">
+                                <!-- STATUS UPDATE CONTROLS (Disappears when Delivered or Cancelled) -->
+                                <div v-if="order.status !== 'delivered' && order.status !== 'cancelled'" class="space-y-1.5 pt-2">
                                     <span class="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400">
                                         Update Order Status
                                     </span>
@@ -448,25 +485,28 @@ const getStatusBadge = (status) => {
 
                                     <button
                                         @click="updateOrderStatus(order, 'delivered')"
-                                        :disabled="order.status === 'delivered' || order.status === 'cancelled' || updatingOrderId === order.id"
-                                        :class="[
-                                            'w-full rounded-lg px-2.5 py-1.5 text-xs font-semibold transition border',
-                                            order.status === 'delivered'
-                                                ? 'bg-emerald-600 text-white border-emerald-600'
-                                                : 'border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800'
-                                        ]"
+                                        :disabled="updatingOrderId === order.id"
+                                        class="w-full rounded-lg px-2.5 py-1.5 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
                                     >
                                         Mark Delivered & Complete
                                     </button>
 
                                     <button
-                                        v-if="order.status !== 'cancelled' && order.status !== 'delivered'"
                                         @click="cancelOrder(order)"
                                         :disabled="updatingOrderId === order.id"
                                         class="w-full rounded-lg px-2.5 py-1.5 text-xs font-semibold transition border border-red-500/30 text-red-500 hover:bg-red-500/10"
                                     >
                                         Cancel Order & Restore Stock
                                     </button>
+                                </div>
+
+                                <!-- FINALIZED ORDER STATUS BADGES -->
+                                <div v-else-if="order.status === 'delivered'" class="mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 p-3 text-center text-xs font-bold text-emerald-400">
+                                    ✅ Order Delivered & Completed
+                                </div>
+
+                                <div v-else-if="order.status === 'cancelled'" class="mt-2 rounded-xl bg-red-500/10 border border-red-500/30 p-3 text-center text-xs font-bold text-red-400">
+                                    ❌ Order Cancelled & Restored
                                 </div>
                             </div>
                         </div>

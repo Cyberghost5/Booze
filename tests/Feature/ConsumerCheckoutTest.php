@@ -116,9 +116,10 @@ test('checkout fails when requested quantity exceeds available stock', function 
 });
 
 test('consumer can view placed order status tracker page', function () {
-    $order = Order::factory()->create(['status' => 'pending']);
+    $user = User::factory()->create(['role' => 'consumer']);
+    $order = Order::factory()->create(['user_id' => $user->id, 'status' => 'pending']);
 
-    $response = $this->get(route('consumer.orders.show', $order->id));
+    $response = $this->actingAs($user)->get(route('consumer.orders.show', $order->id));
 
     $response->assertOk()
         ->assertInertia(fn ($page) => $page

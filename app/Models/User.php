@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Services\PhoneNumberService;
 use Database\Factories\UserFactory;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -44,10 +46,10 @@ class User extends Authenticatable
         ];
     }
 
-    protected function phone(): \Illuminate\Database\Eloquent\Casts\Attribute
+    protected function phone(): Attribute
     {
-        return \Illuminate\Database\Eloquent\Casts\Attribute::make(
-            set: fn ($value) => \App\Services\PhoneNumberService::normalize($value),
+        return Attribute::make(
+            set: fn ($value) => PhoneNumberService::normalize($value),
         );
     }
 
@@ -74,5 +76,10 @@ class User extends Authenticatable
     public function vendorProducts(): HasMany
     {
         return $this->hasMany(Product::class, 'vendor_id');
+    }
+
+    public function deliveryLocations(): HasMany
+    {
+        return $this->hasMany(DeliveryLocation::class, 'user_id');
     }
 }

@@ -22,12 +22,26 @@ const props = defineProps({
     },
 });
 
+import { fireSuccessConfetti } from '@/Utils/confetti';
+import { watch } from 'vue';
+
 let pollTimer = null;
+
+watch(() => props.order?.status, (newStatus, oldStatus) => {
+    if (newStatus === 'delivered' && oldStatus !== 'delivered') {
+        fireSuccessConfetti();
+    }
+});
 
 onMounted(() => {
     if (props.order?.id) {
         localStorage.setItem('booze_last_order_id', props.order.id);
     }
+
+    if (props.order?.status === 'delivered') {
+        fireSuccessConfetti();
+    }
+
     // Poll every 5 seconds if order is active (not delivered or cancelled)
     if (props.order.status !== 'delivered' && props.order.status !== 'cancelled') {
         pollTimer = setInterval(() => {
@@ -79,13 +93,13 @@ const cancelMyOrder = () => {
 
     <div class="min-h-screen bg-zinc-950 text-zinc-100 py-12 px-4 sm:px-6 lg:px-8">
         <div class="mx-auto max-w-3xl">
-            <!-- Back to Catalog Link -->
+            <!-- Back to Dashboard Link -->
             <Link
-                :href="route('consumer.catalog')"
+                :href="route('dashboard')"
                 class="inline-flex items-center gap-2 text-xs font-bold text-amber-500 hover:text-amber-400 mb-6"
             >
                 <ArrowLeft class="h-4 w-4" />
-                Back to Drinks Catalog
+                Back to My Dashboard
             </Link>
 
             <!-- ORDER HEADER CARD -->
@@ -134,13 +148,14 @@ const cancelMyOrder = () => {
                         <span v-if="order.status !== 'delivered'" class="text-amber-500 text-[10px] lowercase font-normal">(auto-updating)</span>
                     </div>
 
-                    <div class="relative flex items-center justify-between">
-                        <!-- Progress Connecting Line -->
-                        <div class="absolute left-0 top-1/2 h-1 w-full -translate-y-1/2 bg-zinc-800 z-0"></div>
-                        <div
-                            class="absolute left-0 top-1/2 h-1 -translate-y-1/2 bg-amber-500 transition-all duration-500 z-0"
-                            :style="{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }"
-                        ></div>
+                    <div class="relative flex items-start justify-between px-2">
+                        <!-- Progress Connecting Line Track (Centered at top-6 / 24px) -->
+                        <div class="absolute left-6 right-6 top-6 -translate-y-1/2 h-1 bg-zinc-800 z-0 overflow-hidden rounded-full">
+                            <div
+                                class="h-full bg-amber-500 transition-all duration-500 shadow-sm"
+                                :style="{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }"
+                            ></div>
+                        </div>
 
                         <!-- Step Icons -->
                         <div
@@ -152,15 +167,15 @@ const cancelMyOrder = () => {
                                 :class="[
                                     'flex h-12 w-12 items-center justify-center rounded-2xl border-2 transition duration-300',
                                     index <= currentStepIndex
-                                        ? 'border-amber-500 bg-amber-500 text-black shadow-lg shadow-amber-500/20'
-                                        : 'border-zinc-800 bg-zinc-950 text-zinc-600'
+                                        ? 'border-amber-500 bg-amber-500 text-black shadow-lg shadow-amber-500/30 ring-4 ring-zinc-900'
+                                        : 'border-zinc-800 bg-zinc-900 text-zinc-500 ring-4 ring-zinc-900'
                                 ]"
                             >
                                 <component :is="step.icon" class="h-5 w-5" />
                             </div>
                             <span
                                 :class="[
-                                    'mt-3 text-xs font-bold text-center max-w-[80px]',
+                                    'mt-3 text-xs font-bold text-center max-w-[90px] leading-tight',
                                     index <= currentStepIndex ? 'text-white' : 'text-zinc-500'
                                 ]"
                             >

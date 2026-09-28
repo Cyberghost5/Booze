@@ -106,3 +106,16 @@ test('vendor cannot edit or delete another vendors inventory item', function () 
         ->delete(route('vendor.inventory.destroy', $productVendor1->id))
         ->assertStatus(403);
 });
+
+test('vendor can toggle product chilled temperature status', function () {
+    $vendor = User::factory()->vendor()->create();
+    $product = Product::factory()->vendor($vendor)->create(['is_chilled' => true]);
+
+    $response = $this->actingAs($vendor)->patch(route('vendor.inventory.toggle-chilled', $product->id));
+
+    $response->assertRedirect();
+    expect($product->fresh()->is_chilled)->toBeFalse();
+
+    $this->actingAs($vendor)->patch(route('vendor.inventory.toggle-chilled', $product->id));
+    expect($product->fresh()->is_chilled)->toBeTrue();
+});

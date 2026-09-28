@@ -124,7 +124,7 @@ test('whatsapp dispatch service generates formatted URI with customer phone item
         'subtotal' => 1700.00,
     ]);
 
-    $dispatchService = new WhatsAppDispatchService();
+    $dispatchService = new WhatsAppDispatchService;
     $url = $dispatchService->generateDispatchLink($order, '08099887766');
 
     expect($url)->toContain('https://wa.me/2348099887766?text=')
@@ -171,3 +171,46 @@ test('vendor can cancel order and stock level is automatically restored', functi
     expect($product->fresh()->stock_level)->toBe(13);
 });
 
+test('vendor can export daily sales log as CSV report', function () {
+    $vendor = User::factory()->vendor()->create();
+    $consumer = User::factory()->consumer()->create();
+
+    $order = Order::factory()->create([
+        'user_id' => $consumer->id,
+        'vendor_id' => $vendor->id,
+        'status' => 'delivered',
+        'subtotal' => 5000.00,
+        'delivery_fee' => 500.00,
+        'total' => 5500.00,
+    ]);
+
+    $response = $this->actingAs($vendor)->get(route('vendor.orders.export-csv', ['date' => 'today']));
+
+    $response->assertOk()
+        ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+
+    expect($response->streamedContent())->toContain('Order #')
+        ->toContain($order->order_number);
+});
+
+test('vendor can view rider quick-dispatch view with active orders', function () {
+    $vendor = User::factory()->vendor()->create();
+    $consumer = User::factory()->consumer()->create();
+
+    $order = Order::factory()->create([
+        'user_id' => $consumer->id,
+        'vendor_id' => $vendor->id,
+        'status' => 'packed',
+        'customer_phone' => '08012345678',
+        'latitude' => 10.2847,
+        'longitude' => 9.7915,
+    ]);
+
+    $response = $this->actingAs($vendor)->get(route('vendor.orders.rider'));
+
+    $response->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('Vendor/Orders/RiderDispatch')
+            ->has('orders', 1)
+        );
+});
