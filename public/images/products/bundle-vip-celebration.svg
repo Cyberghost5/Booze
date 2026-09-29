@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+    <defs>
+        <!-- Background Radial Ambient Glow -->
+        <radialGradient id="bgGlow_bundle-vip-celebration" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#eab308" stop-opacity="0.30"/>
+            <stop offset="60%" stop-color="#eab308" stop-opacity="0.08"/>
+            <stop offset="100%" stop-color="#0b0b0e" stop-opacity="1"/>
+        </radialGradient>
+        <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#141418"/>
+            <stop offset="100%" stop-color="#09090c"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Canvas Background -->
+    <rect width="600" height="600" fill="url(#cardBg)"/>
+    <rect width="600" height="600" fill="url(#bgGlow_bundle-vip-celebration)"/>
+
+    <!-- Subtle Background Grid Pattern -->
+    <g opacity="0.04" stroke="#ffffff" stroke-width="1">
+        <line x1="0" y1="150" x2="600" y2="150"/>
+        <line x1="0" y1="300" x2="600" y2="300"/>
+        <line x1="0" y1="450" x2="600" y2="450"/>
+        <line x1="150" y1="0" x2="150" y2="600"/>
+        <line x1="300" y1="0" x2="300" y2="600"/>
+        <line x1="450" y1="0" x2="450" y2="600"/>
+    </g>
+
+                <!-- Party Combo Bundle Visual -->
+            <g transform="translate(120, 100)">
+                <ellipse cx="180" cy="410" rx="160" ry="24" fill="#000000" opacity="0.7"/>
+                
+                <!-- Background Glow Box -->
+                <rect x="20" y="80" width="320" height="310" rx="32" fill="#4c0519" stroke="#9f1239" stroke-width="3"/>
+                
+                <!-- Party Confetti Elements -->
+                <circle cx="60" cy="120" r="8" fill="#f59e0b"/>
+                <circle cx="300" cy="140" r="10" fill="#ef4444"/>
+                <rect x="280" y="100" width="12" height="12" rx="3" fill="#3b82f6" transform="rotate(25 280 100)"/>
+                <rect x="50" y="340" width="14" height="14" rx="4" fill="#10b981" transform="rotate(40 50 340)"/>
+                
+                <!-- Front Bundle Platter Badge -->
+                <rect x="40" y="150" width="280" height="180" rx="24" fill="#9f1239" stroke="#fef08a" stroke-width="3"/>
+                
+                <g transform="translate(180, 210)" text-anchor="middle">
+                                    <text x="0" y="8" font-size="28" text-anchor="middle">🎉</text>
+                    <text y="48" fill="#fef08a" font-family="system-ui, sans-serif" font-weight="900" font-size="22" letter-spacing="1">VIP CELEBRATION</text>
+                    <text y="75" fill="#fef08a" opacity="0.9" font-family="system-ui, sans-serif" font-weight="800" font-size="11" letter-spacing="1.5">CARLO ROSSI + HEINEKEN</text>
+                </g>
+            </g>
+
+    <!-- Top Badge Volume Badge -->
+    <g transform="translate(560, 40)" text-anchor="end">
+        <rect x="-110" y="0" width="110" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+        <text x="-55" y="21" text-anchor="middle" fill="#f4f4f5" font-family="system-ui, sans-serif" font-weight="800" font-size="12">VIP BUNDLE</text>
+    </g>
+
+    <!-- Bottom Authentic Brand Tag -->
+    <g transform="translate(300, 560)" text-anchor="middle">
+        <text y="0" fill="#a1a1aa" font-family="system-ui, sans-serif" font-weight="700" font-size="13" letter-spacing="3">AUTHENTIC NIGERIAN DRINKS</text>
+    </g>
+</svg>

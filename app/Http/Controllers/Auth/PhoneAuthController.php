@@ -110,6 +110,7 @@ class PhoneAuthController extends Controller
             'success' => true,
             'requires_otp' => true,
             'phone' => $user->phone,
+            'otp' => $otp, // Included for testing SMS modal display
             'message' => "Verification OTP sent to {$user->phone} via SMS.",
         ]);
     }
@@ -201,6 +202,7 @@ class PhoneAuthController extends Controller
 
         return response()->json([
             'success' => true,
+            'otp' => $otp, // Included for testing SMS modal display
             'message' => 'A new verification OTP has been sent to your phone via SMS.',
         ]);
     }

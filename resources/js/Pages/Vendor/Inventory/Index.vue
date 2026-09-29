@@ -21,6 +21,7 @@ import {
     Minus,
     PlusCircle
 } from 'lucide-vue-next';
+import DragDropImageUploader from '@/Components/DragDropImageUploader.vue';
 
 const props = defineProps({
     myStock: {
@@ -89,6 +90,7 @@ const customForm = useForm({
 });
 
 const editForm = useForm({
+    _method: 'PUT',
     name: '',
     category_id: '',
     unit: 'bottle',
@@ -169,6 +171,7 @@ const submitGlobalStock = () => {
 // Submit Custom Item
 const submitCustomProduct = () => {
     customForm.post(route('vendor.inventory.store-custom'), {
+        forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             showCustomModal.value = false;
@@ -189,11 +192,13 @@ const openEditModal = (product) => {
     editForm.is_chilled = Boolean(product.is_chilled);
     editForm.description = product.description || '';
     editForm.image_url = product.image_url || '';
+    editForm.image = null;
     showEditModal.value = true;
 };
 
 const submitEditProduct = () => {
-    editForm.put(route('vendor.inventory.update', selectedEditProduct.value.id), {
+    editForm.post(route('vendor.inventory.update', selectedEditProduct.value.id), {
+        forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
             showEditModal.value = false;
@@ -730,15 +735,11 @@ const deleteProduct = (product) => {
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Image URL (Optional)</label>
-                        <input
-                            v-model="customForm.image_url"
-                            type="url"
-                            placeholder="https://..."
-                            class="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-amber-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                        />
-                    </div>
+                    <DragDropImageUploader
+                        v-model:modelValueFile="customForm.image"
+                        v-model:modelValueUrl="customForm.image_url"
+                        label="Product Image (Drag & Drop File or Paste URL)"
+                    />
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
                         <button
@@ -842,6 +843,13 @@ const deleteProduct = (product) => {
                             />
                         </div>
                     </div>
+
+                    <DragDropImageUploader
+                        v-model:modelValueFile="editForm.image"
+                        v-model:modelValueUrl="editForm.image_url"
+                        :current-image-url="selectedEditProduct?.image_url"
+                        label="Product Image (Drag & Drop File or Paste URL)"
+                    />
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
                         <button

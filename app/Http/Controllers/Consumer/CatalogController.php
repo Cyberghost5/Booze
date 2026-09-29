@@ -71,4 +71,34 @@ class CatalogController extends Controller
             'deliveryLocations' => $deliveryLocations,
         ]);
     }
+
+    public function partyBundles(Request $request): Response
+    {
+        $partyBundles = PartyBundle::where('is_active', true)
+            ->with(['items.product'])
+            ->latest()
+            ->get();
+
+        $activeOrder = null;
+        $deliveryLocations = [];
+
+        if ($user = $request->user()) {
+            $activeOrder = Order::where('user_id', $user->id)
+                ->whereIn('status', ['pending', 'packed', 'out_for_delivery'])
+                ->latest()
+                ->first();
+
+            $deliveryLocations = $user->deliveryLocations()->get();
+        }
+
+        $categories = Category::orderBy('name')->get();
+
+        return Inertia::render('Consumer/PartyBundles', [
+            'partyBundles' => $partyBundles,
+            'categories' => $categories,
+            'deliveryFee' => 500.00,
+            'activeOrder' => $activeOrder,
+            'deliveryLocations' => $deliveryLocations,
+        ]);
+    }
 }

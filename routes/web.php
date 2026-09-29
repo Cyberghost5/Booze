@@ -20,6 +20,7 @@ use App\Http\Controllers\Consumer\DeliveryLocationController;
 
 // Consumer Experience Routes
 Route::get('/', [CatalogController::class, 'index'])->name('consumer.catalog');
+Route::get('/party-bundles', [CatalogController::class, 'partyBundles'])->name('consumer.party-bundles');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('consumer.checkout');
 Route::get('/orders/{order}', [CheckoutController::class, 'showOrder'])->name('consumer.orders.show');
 Route::patch('/orders/{order}/cancel', [CheckoutController::class, 'cancelOrder'])->name('consumer.orders.cancel');

@@ -16,6 +16,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // 0. Generate High-Quality Vector SVG Assets for authentic Nigerian Brands
+        ProductSvgGenerator::generateAll();
+
         // 1. Create Default Users (Vendor Admin & Consumers)
         $vendor = User::factory()->create([
             'name' => 'Gwallameji Vendor Admin',
@@ -902,7 +905,7 @@ class DatabaseSeeder extends Seeder
                 'name' => $item['name'],
                 'slug' => Str::slug($item['name'].'-'.$vendor->id),
                 'description' => $item['description'],
-                'image_url' => $item['image_url'],
+                'image_url' => ProductSvgGenerator::getImageUrl($item['name']),
                 'unit' => $item['unit'],
                 'cost_price' => $item['cost_price'],
                 'selling_price' => $item['selling_price'],
@@ -975,7 +978,7 @@ class DatabaseSeeder extends Seeder
                 'original_price' => 8100.00,
                 'discount_percentage' => 16,
                 'badge_text' => '🔥 SAVE 16% (STUDENT FAVOURITE)',
-                'image_url' => 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=600&q=80',
+                'image_url' => ProductSvgGenerator::getImageUrl('gwallameji-weekend-vibes-combo'),
                 'is_active' => true,
             ]);
 
@@ -992,7 +995,7 @@ class DatabaseSeeder extends Seeder
                 'original_price' => 5300.00,
                 'discount_percentage' => 20,
                 'badge_text' => '⚡ 20% OFF (CHASER COMBO)',
-                'image_url' => 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
+                'image_url' => ProductSvgGenerator::getImageUrl('all-night-chaser-energy-pack'),
                 'is_active' => true,
             ]);
 
@@ -1012,7 +1015,7 @@ class DatabaseSeeder extends Seeder
                     'original_price' => 20200.00,
                     'discount_percentage' => 13,
                     'badge_text' => '👑 VIP CELEBRATION',
-                    'image_url' => 'https://images.unsplash.com/photo-1558001373-7b9fcc48fac0?auto=format&fit=crop&w=600&q=80',
+                    'image_url' => ProductSvgGenerator::getImageUrl('vip-hostel-celebration-bundle'),
                     'is_active' => true,
                 ]);
 

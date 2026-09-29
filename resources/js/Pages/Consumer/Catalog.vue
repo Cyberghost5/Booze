@@ -65,7 +65,6 @@ const flashError = computed(() => page.props.errors?.dob || page.props.errors?.c
 
 // Age Verification Gate State
 const isAgeVerified = ref(false);
-const dobInput = ref('');
 const ageError = ref('');
 
 const checkAgeVerification = () => {
@@ -75,30 +74,14 @@ const checkAgeVerification = () => {
     }
 };
 
-const verifyAge = () => {
-    if (!dobInput.value) {
-        ageError.value = 'Please select your Date of Birth.';
-        return;
-    }
-
-    const birthDate = new Date(dobInput.value);
-    const today = new Date();
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-    }
-
-    if (age < 18) {
-        ageError.value = 'Access Denied: You must be 18 years or older to enter.';
-        return;
-    }
-
+const confirmAge = () => {
     localStorage.setItem('booze_dob_verified', 'true');
-    localStorage.setItem('booze_user_dob', dobInput.value);
     isAgeVerified.value = true;
     ageError.value = '';
+};
+
+const rejectAge = () => {
+    ageError.value = 'Access Denied: You must be 18 years or older to enter.';
 };
 
 onMounted(() => {
@@ -156,7 +139,7 @@ const handleFilterChange = (catId = selectedCategory.value, isChilled = chilledO
             category_id: selectedCategory.value,
             chilled_only: chilledOnly.value ? 1 : 0
         },
-        { preserveState: true, replace: true }
+        { preserveState: true, preserveScroll: true, replace: true }
     );
 };
 
@@ -311,6 +294,10 @@ const authLoading = ref(false);
 const authError = ref('');
 const authSuccess = ref('');
 
+// Testing OTP SMS Modal State (TEMPORARY: REMOVE LATER)
+const demoOtpModalVisible = ref(false);
+const demoOtpCode = ref('');
+
 const authForm = ref({
     name: '',
     phone: '',
@@ -354,7 +341,6 @@ const handleModalLogin = async () => {
                     authLoading.value = false;
                     checkoutForm.customer_name = response.data.user.name;
                     checkoutForm.customer_phone = response.data.user.phone;
-                    submitCheckout();
                 },
             });
         }
@@ -379,6 +365,14 @@ const handleModalRegister = async () => {
         if (response.data.success) {
             authSuccess.value = response.data.message;
             authMode.value = 'otp';
+            if (response.data.otp) {
+                authForm.value.otp = response.data.otp;
+                demoOtpCode.value = response.data.otp;
+                demoOtpModalVisible.value = true;
+                setTimeout(() => {
+                    demoOtpModalVisible.value = false;
+                }, 7000);
+            }
         }
     } catch (err) {
         authLoading.value = false;
@@ -404,7 +398,6 @@ const handleModalVerifyOtp = async () => {
                     authLoading.value = false;
                     checkoutForm.customer_name = response.data.user.name;
                     checkoutForm.customer_phone = response.data.user.phone;
-                    submitCheckout();
                 },
             });
         }
@@ -423,6 +416,14 @@ const resendModalOtp = async () => {
         });
         authLoading.value = false;
         authSuccess.value = response.data.message;
+        if (response.data.otp) {
+            authForm.value.otp = response.data.otp;
+            demoOtpCode.value = response.data.otp;
+            demoOtpModalVisible.value = true;
+            setTimeout(() => {
+                demoOtpModalVisible.value = false;
+            }, 7000);
+        }
     } catch (err) {
         authLoading.value = false;
         authError.value = err.response?.data?.message || 'Failed to resend OTP.';
@@ -477,11 +478,51 @@ const getCategoryIcon = (slug) => {
 <template>
     <Head title="Booze App Gwallameji - 18+ Beverage Marketplace" />
 
+    <!-- TESTING / DEMO SMS OTP POPUP MODAL (TEMPORARY: REMOVE LATER) -->
+    <Transition
+        enter-active-class="transform transition duration-300 ease-out"
+        enter-from-class="translate-y-[-20px] opacity-0 scale-95"
+        enter-to-class="translate-y-0 opacity-100 scale-100"
+        leave-active-class="transform transition duration-200 ease-in"
+        leave-from-class="translate-y-0 opacity-100 scale-100"
+        leave-to-class="translate-y-[-20px] opacity-0 scale-95"
+    >
+        <div
+            v-if="demoOtpModalVisible"
+            class="fixed top-6 right-6 z-[100] w-full max-w-sm rounded-2xl border border-amber-500/60 bg-zinc-900/95 p-4 shadow-2xl backdrop-blur-xl"
+        >
+            <div class="flex items-start gap-3">
+                <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-black font-extrabold text-lg">
+                    📱
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between text-[11px] font-extrabold text-amber-400">
+                        <span>TEST SMS RECEIVED</span>
+                        <span class="text-[9px] text-zinc-500 font-mono">JUST NOW</span>
+                    </div>
+                    <p class="mt-1 text-xs text-zinc-200">
+                        BoozeApp OTP for <strong>{{ authForm.phone }}</strong>:
+                    </p>
+                    <div class="mt-2 flex items-center justify-between rounded-xl bg-zinc-950 p-2.5 border border-zinc-800">
+                        <span class="font-mono text-xl font-black tracking-widest text-amber-400">{{ demoOtpCode }}</span>
+                        <span class="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">Auto-filled</span>
+                    </div>
+                    <p class="mt-2 text-[10px] text-amber-300/80 font-semibold flex items-center gap-1">
+                        <span>⚠️</span> Demo Modal (Auto-closes in 7s. Remind to remove later).
+                    </p>
+                </div>
+                <button @click="demoOtpModalVisible = false" class="text-zinc-500 hover:text-white">
+                    <X class="h-4 w-4" />
+                </button>
+            </div>
+        </div>
+    </Transition>
+
     <div class="min-h-screen bg-zinc-950 text-zinc-100 font-sans selection:bg-amber-500 selection:text-black">
         <!-- TOP NAV HEADER -->
         <header class="sticky top-0 z-40 border-b border-zinc-900 bg-zinc-950/90 backdrop-blur-md">
             <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-4">
                     <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500 font-extrabold text-black shadow-lg shadow-amber-500/20">
                         🍹
                     </div>
@@ -492,6 +533,23 @@ const getCategoryIcon = (slug) => {
                             Gwallameji Axis, Bauchi
                         </span>
                     </div>
+
+                    <!-- Navigation Links -->
+                    <nav class="hidden md:flex items-center gap-2 ml-4">
+                        <Link
+                            :href="route('consumer.catalog')"
+                            class="px-3 py-1.5 rounded-xl text-xs font-black bg-amber-500/10 text-amber-400 border border-amber-500/30"
+                        >
+                            🍺 All Drinks Catalog
+                        </Link>
+                        <Link
+                            :href="route('consumer.party-bundles')"
+                            class="px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-400 hover:text-white hover:bg-zinc-900 transition flex items-center gap-1.5"
+                        >
+                            <span>📦 Party Bundles</span>
+                            <span class="bg-amber-500 text-black px-1.5 py-0.2 rounded-md text-[10px]">HOT</span>
+                        </Link>
+                    </nav>
                 </div>
 
                 <!-- Right Header Actions -->
@@ -638,88 +696,32 @@ const getCategoryIcon = (slug) => {
                 </div>
             </div>
 
-            <!-- PARTY BUNDLES & COMBO PACKS SECTION -->
-            <div v-if="partyBundles && partyBundles.length > 0" class="mb-10">
-                <div class="flex items-center justify-between mb-4">
+            <!-- PARTY BUNDLES DEDICATED PROMO BANNER -->
+            <div class="mb-10 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-950/60 via-zinc-900 to-zinc-900 p-6 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-4">
+                    <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/20 text-3xl border border-amber-500/30 shrink-0">
+                        📦
+                    </div>
                     <div>
-                        <h3 class="text-xl font-black text-white flex items-center gap-2">
-                            <span>📦 Party Bundles & Combo Packs</span>
-                            <span class="text-xs bg-amber-500/20 text-amber-400 border border-amber-500/40 px-2.5 py-0.5 rounded-full font-bold">
-                                SPECIAL DISCOUNT
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-black text-white">Party Bundles & Student Combo Packs</h3>
+                            <span class="bg-amber-500 text-black px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide">
+                                SAVE UP TO 20%
                             </span>
-                        </h3>
-                        <p class="text-xs text-zinc-400 mt-0.5">
-                            Curated combo bundles for Gwallameji student lodges & weekend celebrations
+                        </div>
+                        <p class="text-xs text-zinc-400 mt-1">
+                            Curated drink packs for hostel celebrations, weekend chillouts, and room chasers.
                         </p>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                    <div
-                        v-for="bundle in partyBundles"
-                        :key="bundle.id"
-                        class="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 via-zinc-900 to-zinc-900 p-5 backdrop-blur transition-all duration-300 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-500/10"
-                    >
-                        <div>
-                            <!-- Bundle Image & Badge -->
-                            <div class="relative aspect-video w-full overflow-hidden rounded-2xl bg-zinc-950 mb-4">
-                                <img
-                                    :src="bundle.image_url"
-                                    :alt="bundle.title"
-                                    class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-                                />
-                                <span class="absolute top-2 left-2 rounded-full bg-amber-500 px-3 py-1 text-xs font-black text-black shadow-lg">
-                                    {{ bundle.badge_text }}
-                                </span>
-                            </div>
-
-                            <!-- Title & Price -->
-                            <div class="flex items-start justify-between gap-2">
-                                <h4 class="text-base font-black text-white group-hover:text-amber-400 transition leading-snug">
-                                    {{ bundle.title }}
-                                </h4>
-                            </div>
-
-                            <p class="mt-1 text-xs text-zinc-300">
-                                {{ bundle.description }}
-                            </p>
-
-                            <!-- Included Items List -->
-                            <div class="mt-3 rounded-xl bg-zinc-950/80 p-3 border border-zinc-800/80">
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block mb-1">
-                                    Bundle Drinks Included:
-                                </span>
-                                <ul class="space-y-1 text-xs text-zinc-300">
-                                    <li v-for="item in bundle.items" :key="item.id" class="flex items-center gap-1.5">
-                                        <span class="font-bold text-amber-400">✓ {{ item.quantity }}x</span>
-                                        <span>{{ item.product?.name }}</span>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-
-                        <!-- Price & 1-Click Add Button -->
-                        <div class="mt-5 flex items-center justify-between border-t border-zinc-800 pt-4">
-                            <div>
-                                <span class="text-xs text-zinc-500 line-through block font-mono">
-                                    {{ formatNaira(bundle.original_price) }}
-                                </span>
-                                <span class="text-xl font-black text-amber-400 font-mono">
-                                    {{ formatNaira(bundle.price) }}
-                                </span>
-                            </div>
-
-                            <button
-                                type="button"
-                                @click="addBundleToCart(bundle)"
-                                class="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-4 py-2.5 transition shadow-lg active:scale-95"
-                            >
-                                <ShoppingBag class="w-4 h-4" />
-                                Add Combo to Cart
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <Link
+                    :href="route('consumer.party-bundles')"
+                    class="inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-5 py-3 text-xs font-black text-black shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-95 transition shrink-0"
+                >
+                    <span>Explore Party Bundles</span>
+                    <ArrowRight class="h-4 w-4" />
+                </Link>
             </div>
 
             <!-- CATEGORY FILTER TABS -->
@@ -958,7 +960,7 @@ const getCategoryIcon = (slug) => {
             </button>
         </div>
 
-        <!-- MANDATORY 18+ DOB AGE VERIFICATION GATE MODAL -->
+        <!-- MANDATORY 18+ AGE VERIFICATION GATE MODAL -->
         <div v-if="!isAgeVerified" class="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4">
             <div class="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-900 p-8 text-center shadow-2xl">
                 <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 mb-4 border border-amber-500/20">
@@ -967,37 +969,33 @@ const getCategoryIcon = (slug) => {
 
                 <h2 class="text-2xl font-black text-white">Age Verification Required</h2>
                 <p class="mt-2 text-sm text-zinc-400">
-                    Booze App Gwallameji is strictly restricted to individuals <strong>18 years of age or older</strong>. Please enter your Date of Birth to enter.
+                    Booze App Gwallameji is strictly restricted to individuals <strong>18 years of age or older</strong>. Are you 18 years old or older?
                 </p>
 
-                <div class="mt-6 text-left space-y-4">
-                    <div>
-                        <label class="block text-xs font-bold uppercase tracking-wider text-zinc-400 mb-1">
-                            Date of Birth
-                        </label>
-                        <input
-                            v-model="dobInput"
-                            type="date"
-                            required
-                            class="w-full rounded-xl border border-zinc-800 bg-zinc-950 px-4 py-3 text-sm text-white focus:border-amber-500 focus:outline-none"
-                        />
-                    </div>
+                <div v-if="ageError" class="mt-4 rounded-xl bg-red-950/60 border border-red-500/30 p-3 text-xs text-red-300 font-semibold flex items-center justify-center gap-2">
+                    <ShieldAlert class="h-4 w-4 text-red-400 shrink-0" />
+                    {{ ageError }}
+                </div>
 
-                    <div v-if="ageError" class="rounded-xl bg-red-950/60 border border-red-500/30 p-3 text-xs text-red-300 font-semibold flex items-center gap-2">
-                        <ShieldAlert class="h-4 w-4 text-red-400 shrink-0" />
-                        {{ ageError }}
-                    </div>
-
+                <div class="mt-6 grid grid-cols-2 gap-3">
                     <button
-                        @click="verifyAge"
-                        class="w-full rounded-xl bg-amber-500 py-3.5 text-sm font-black text-black shadow-lg shadow-amber-500/20 transition hover:bg-amber-400 active:scale-95"
+                        type="button"
+                        @click="rejectAge"
+                        class="rounded-xl border border-zinc-800 bg-zinc-950 py-3.5 text-xs font-bold text-zinc-400 hover:border-red-500/50 hover:bg-red-950/30 hover:text-red-300 transition"
                     >
-                        Confirm & Enter App
+                        No, I am Under 18
+                    </button>
+                    <button
+                        type="button"
+                        @click="confirmAge"
+                        class="rounded-xl bg-amber-500 py-3.5 text-xs font-black text-black shadow-lg shadow-amber-500/20 hover:bg-amber-400 active:scale-95 transition"
+                    >
+                        Yes, I am 18+
                     </button>
                 </div>
 
                 <p class="mt-4 text-xs text-zinc-500">
-                    By entering, you confirm that you meet the legal drinking age requirements in Nigeria.
+                    By clicking Yes, you acknowledge and confirm that you meet the legal drinking age requirements in Nigeria.
                 </p>
             </div>
         </div>

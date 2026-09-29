@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+    <defs>
+        <!-- Background Radial Ambient Glow -->
+        <radialGradient id="bgGlow_squadron-dark-rum" cx="50%" cy="45%" r="60%">
+            <stop offset="0%" stop-color="#78350f" stop-opacity="0.30"/>
+            <stop offset="60%" stop-color="#78350f" stop-opacity="0.08"/>
+            <stop offset="100%" stop-color="#0b0b0e" stop-opacity="1"/>
+        </radialGradient>
+        <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stop-color="#141418"/>
+            <stop offset="100%" stop-color="#09090c"/>
+        </linearGradient>
+    </defs>
+
+    <!-- Canvas Background -->
+    <rect width="600" height="600" fill="url(#cardBg)"/>
+    <rect width="600" height="600" fill="url(#bgGlow_squadron-dark-rum)"/>
+
+    <!-- Subtle Background Grid Pattern -->
+    <g opacity="0.04" stroke="#ffffff" stroke-width="1">
+        <line x1="0" y1="150" x2="600" y2="150"/>
+        <line x1="0" y1="300" x2="600" y2="300"/>
+        <line x1="0" y1="450" x2="600" y2="450"/>
+        <line x1="150" y1="0" x2="150" y2="600"/>
+        <line x1="300" y1="0" x2="300" y2="600"/>
+        <line x1="450" y1="0" x2="450" y2="600"/>
+    </g>
+
+                <!-- Spirits (Cognac / Whiskey / Rum / Gin) Bottle -->
+            <g transform="translate(175, 75)">
+                <ellipse cx="125" cy="445" rx="95" ry="18" fill="#000000" opacity="0.6"/>
+                <!-- Metallic Cap & Collar -->
+                <rect x="100" y="20" width="50" height="35" rx="6" fill="#ca8a04" stroke="#fef08a" stroke-width="1.5"/>
+                <rect x="98" y="55" width="54" height="20" fill="#18181b"/>
+                <!-- Tapered Neck -->
+                <path d="M104 75 L146 75 L158 150 L92 150 Z" fill="#3b0764"/>
+                <!-- Broad Shoulders -->
+                <path d="M92 150 L158 150 L205 200 L45 200 Z" fill="#3b0764" stroke="#3f3f46" stroke-width="1.5"/>
+                <!-- Main Body -->
+                <rect x="45" y="200" width="160" height="235" rx="16" fill="#3b0764" stroke="#52525b" stroke-width="2"/>
+                <rect x="58" y="205" width="22" height="220" rx="10" fill="#ffffff" opacity="0.15"/>
+
+                <!-- Main Label Frame -->
+                <rect x="60" y="240" width="130" height="170" rx="12" fill="#581c87" stroke="#eab308" stroke-width="2"/>
+                <g transform="translate(125, 290)" text-anchor="middle">
+                                    <path d="M-16 0 Q-8 -12 0 0 Q8 12 16 0" stroke="#facc15" stroke-width="4" stroke-linecap="round" fill="none"/>
+                    <text y="42" fill="#facc15" font-family="system-ui, sans-serif" font-weight="900" font-size="18" letter-spacing="1">SQUADRON</text>
+                    <text y="64" fill="#facc15" opacity="0.85" font-family="system-ui, sans-serif" font-weight="700" font-size="9" letter-spacing="1.5">DARK RUM</text>
+                </g>
+            </g>
+
+    <!-- Top Badge Volume Badge -->
+    <g transform="translate(560, 40)" text-anchor="end">
+        <rect x="-110" y="0" width="110" height="32" rx="16" fill="#18181b" stroke="#3f3f46" stroke-width="1.5"/>
+        <text x="-55" y="21" text-anchor="middle" fill="#f4f4f5" font-family="system-ui, sans-serif" font-weight="800" font-size="12">75cl</text>
+    </g>
+
+    <!-- Bottom Authentic Brand Tag -->
+    <g transform="translate(300, 560)" text-anchor="middle">
+        <text y="0" fill="#a1a1aa" font-family="system-ui, sans-serif" font-weight="700" font-size="13" letter-spacing="3">AUTHENTIC NIGERIAN DRINKS</text>
+    </g>
+</svg>
