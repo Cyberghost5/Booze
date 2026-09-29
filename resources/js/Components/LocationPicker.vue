@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue';
 import { MapPin, Building, Check, LocateFixed, Loader2 } from 'lucide-vue-next';
+import { NativeBridge } from '@/Services/NativeBridge';
 
 const props = defineProps({
     address: {
@@ -39,59 +40,46 @@ const selectLandmark = (landmark) => {
     statusMessage.value = '';
 };
 
-const detectCurrentLocation = () => {
-    if (!navigator.geolocation) {
-        statusMessage.value = 'Geolocation is not supported by your browser.';
-        statusType.value = 'error';
-        return;
-    }
-
+const detectCurrentLocation = async () => {
     isLocating.value = true;
     statusMessage.value = '';
 
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
+    try {
+        const coords = await NativeBridge.getCurrentPosition();
+        const lat = coords.latitude;
+        const lng = coords.longitude;
 
-            emit('update:latitude', Number(lat.toFixed(6)));
-            emit('update:longitude', Number(lng.toFixed(6)));
+        emit('update:latitude', Number(lat.toFixed(6)));
+        emit('update:longitude', Number(lng.toFixed(6)));
 
-            try {
-                const response = await fetch(
-                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
-                );
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.display_name) {
-                        const parts = data.display_name.split(',');
-                        const shortAddr = parts.slice(0, 3).join(',').trim();
-                        if (shortAddr) {
-                            emit('update:address', shortAddr);
-                        }
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+            );
+            if (response.ok) {
+                const data = await response.json();
+                if (data && data.display_name) {
+                    const parts = data.display_name.split(',');
+                    const shortAddr = parts.slice(0, 3).join(',').trim();
+                    if (shortAddr) {
+                        emit('update:address', shortAddr);
                     }
                 }
-            } catch (e) {
-                if (!props.address) {
-                    emit('update:address', 'Gwallameji, Bauchi');
-                }
-            } finally {
-                isLocating.value = false;
-                statusMessage.value = 'Current location detected!';
-                statusType.value = 'success';
             }
-        },
-        (error) => {
-            isLocating.value = false;
-            let errorText = 'Unable to fetch your location.';
-            if (error.code === error.PERMISSION_DENIED) {
-                errorText = 'Location permission denied. Please select a landmark below or type your address.';
+        } catch (e) {
+            if (!props.address) {
+                emit('update:address', 'Gwallameji, Bauchi');
             }
-            statusMessage.value = errorText;
-            statusType.value = 'error';
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
+        }
+
+        statusMessage.value = 'GPS position detected successfully!';
+        statusType.value = 'success';
+    } catch (err) {
+        statusMessage.value = err.message || 'Unable to detect GPS position.';
+        statusType.value = 'error';
+    } finally {
+        isLocating.value = false;
+    }
 };
 </script>
 
