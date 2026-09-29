@@ -136,8 +136,8 @@ class InventoryController extends Controller
             'stock_level' => 'required|integer|min:0',
             'is_chilled' => 'nullable|boolean',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
-            'image_url' => 'nullable|url',
+            'image' => 'nullable|file|mimes:jpeg,jpg,png,webp,svg,gif|max:10240',
+            'image_url' => 'nullable|string|max:1000',
         ]);
 
         $imageUrl = $validated['image_url'] ?? 'https://images.unsplash.com/photo-1527281400683-1aae777175f8?auto=format&fit=crop&w=600&q=80';
@@ -213,8 +213,8 @@ class InventoryController extends Controller
             'stock_level' => 'required|integer|min:0',
             'is_chilled' => 'nullable|boolean',
             'description' => 'nullable|string',
-            'image' => 'nullable|image|max:2048',
-            'image_url' => 'nullable|url',
+            'image' => 'nullable|file|mimes:jpeg,jpg,png,webp,svg,gif|max:10240',
+            'image_url' => 'nullable|string|max:1000',
         ]);
 
         $data = [

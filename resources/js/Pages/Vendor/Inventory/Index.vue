@@ -741,6 +741,10 @@ const deleteProduct = (product) => {
                         label="Product Image (Drag & Drop File or Paste URL)"
                     />
 
+                    <div v-if="Object.keys(customForm.errors).length > 0" class="rounded-xl bg-red-950/80 border border-red-500/40 p-3 text-xs text-red-300 font-semibold space-y-1">
+                        <p v-for="(err, key) in customForm.errors" :key="key">⚠️ {{ err }}</p>
+                    </div>
+
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
                         <button
                             type="button"
@@ -850,6 +854,10 @@ const deleteProduct = (product) => {
                         :current-image-url="selectedEditProduct?.image_url"
                         label="Product Image (Drag & Drop File or Paste URL)"
                     />
+
+                    <div v-if="Object.keys(editForm.errors).length > 0" class="rounded-xl bg-red-950/80 border border-red-500/40 p-3 text-xs text-red-300 font-semibold space-y-1">
+                        <p v-for="(err, key) in editForm.errors" :key="key">⚠️ {{ err }}</p>
+                    </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-gray-200 pt-4 dark:border-gray-800">
                         <button

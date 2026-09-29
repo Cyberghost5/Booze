@@ -58,7 +58,7 @@ Route::middleware(['auth', EnsureUserIsVendor::class])
         Route::post('/inventory/custom', [InventoryController::class, 'storeCustom'])->name('inventory.store-custom');
         Route::patch('/inventory/{product}/stock', [InventoryController::class, 'updateStock'])->name('inventory.update-stock');
         Route::patch('/inventory/{product}/chilled', [InventoryController::class, 'toggleChilled'])->name('inventory.toggle-chilled');
-        Route::put('/inventory/{product}', [InventoryController::class, 'update'])->name('inventory.update');
+        Route::match(['put', 'post'], '/inventory/{product}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::delete('/inventory/{product}', [InventoryController::class, 'destroy'])->name('inventory.destroy');
 
         // Orders Feed & Daily Bookkeeping Digest
