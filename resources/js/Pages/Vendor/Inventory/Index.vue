@@ -598,7 +598,7 @@ const deleteProduct = (product) => {
                         />
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cost Price (COGS ₦)</label>
                             <input
@@ -672,7 +672,7 @@ const deleteProduct = (product) => {
                         />
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Category</label>
                             <select
@@ -700,7 +700,7 @@ const deleteProduct = (product) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cost Price (COGS ₦)</label>
                             <input
@@ -789,7 +789,7 @@ const deleteProduct = (product) => {
                         />
                     </div>
 
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Category</label>
                             <select
@@ -815,7 +815,7 @@ const deleteProduct = (product) => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Cost Price (COGS ₦)</label>
                             <input

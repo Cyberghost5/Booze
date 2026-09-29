@@ -111,32 +111,32 @@ const formatFileSize = (bytes) => {
 
 <template>
     <div class="space-y-2.5">
-        <div class="flex items-center justify-between">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <label class="block text-xs font-bold uppercase tracking-wider text-zinc-300 dark:text-zinc-300">
                 {{ label }}
             </label>
-            <div class="flex rounded-xl bg-zinc-950 p-1 text-[11px] font-bold border border-zinc-800 shadow-inner">
+            <div class="flex items-center rounded-xl bg-zinc-950 p-1 text-xs font-bold border border-zinc-800 shadow-inner shrink-0 self-start sm:self-auto">
                 <button
                     type="button"
                     @click="activeTab = 'file'; uploadError = '';"
                     :class="[
-                        'px-3 py-1 rounded-lg transition-all flex items-center gap-1.5',
+                        'px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap',
                         activeTab === 'file' ? 'bg-amber-500 text-zinc-950 font-extrabold shadow-md' : 'text-zinc-400 hover:text-white'
                     ]"
                 >
-                    <UploadCloud class="h-3.5 w-3.5" />
-                    Drag & Drop File
+                    <UploadCloud class="h-3.5 w-3.5 shrink-0" />
+                    <span>Upload File</span>
                 </button>
                 <button
                     type="button"
                     @click="activeTab = 'url'; uploadError = '';"
                     :class="[
-                        'px-3 py-1 rounded-lg transition-all flex items-center gap-1.5',
+                        'px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 whitespace-nowrap',
                         activeTab === 'url' ? 'bg-amber-500 text-zinc-950 font-extrabold shadow-md' : 'text-zinc-400 hover:text-white'
                     ]"
                 >
-                    <LinkIcon class="h-3.5 w-3.5" />
-                    Image URL
+                    <LinkIcon class="h-3.5 w-3.5 shrink-0" />
+                    <span>Image URL</span>
                 </button>
             </div>
         </div>
