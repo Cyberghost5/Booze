@@ -157,10 +157,15 @@ const authLoading = ref(false);
 const authError = ref('');
 const authSuccess = ref('');
 
+// Testing OTP SMS Modal State (TEMPORARY: REMOVE LATER)
+const demoOtpModalVisible = ref(false);
+const demoOtpCode = ref('');
+
 const authForm = ref({
     name: '',
     phone: '',
     password: '',
+    password_confirmation: '',
     otp: '',
 });
 
@@ -205,6 +210,148 @@ const handleModalLogin = async () => {
     } catch (err) {
         authLoading.value = false;
         authError.value = err.response?.data?.message || 'Login failed. Please check your credentials.';
+    }
+};
+
+const handleModalRegister = async () => {
+    authLoading.value = true;
+    authError.value = '';
+    authSuccess.value = '';
+    try {
+        const response = await axios.post(route('auth.phone-register'), {
+            name: authForm.value.name,
+            phone: authForm.value.phone,
+            password: authForm.value.password,
+        });
+
+        authLoading.value = false;
+        if (response.data.success) {
+            authSuccess.value = response.data.message;
+            authMode.value = 'otp';
+            if (response.data.otp) {
+                authForm.value.otp = response.data.otp;
+                demoOtpCode.value = response.data.otp;
+                demoOtpModalVisible.value = true;
+                setTimeout(() => {
+                    demoOtpModalVisible.value = false;
+                }, 7000);
+            }
+        }
+    } catch (err) {
+        authLoading.value = false;
+        authError.value = err.response?.data?.message || 'Registration failed. Please check your details.';
+    }
+};
+
+const handleModalVerifyOtp = async () => {
+    authLoading.value = true;
+    authError.value = '';
+    authSuccess.value = '';
+    try {
+        const response = await axios.post(route('auth.phone-verify-otp'), {
+            phone: authForm.value.phone,
+            otp: authForm.value.otp,
+        });
+
+        if (response.data.success) {
+            authSuccess.value = response.data.message;
+            router.reload({
+                only: ['auth', 'activeOrder'],
+                onSuccess: () => {
+                    authLoading.value = false;
+                    checkoutForm.customer_name = response.data.user.name;
+                    checkoutForm.customer_phone = response.data.user.phone;
+                },
+            });
+        }
+    } catch (err) {
+        authLoading.value = false;
+        authError.value = err.response?.data?.message || 'Invalid OTP code.';
+    }
+};
+
+const handleModalSendResetOtp = async () => {
+    authLoading.value = true;
+    authError.value = '';
+    authSuccess.value = '';
+    try {
+        const response = await axios.post(route('auth.phone-forgot-password'), {
+            phone: authForm.value.phone,
+        });
+
+        authLoading.value = false;
+        if (response.data.success) {
+            authSuccess.value = response.data.message;
+            authMode.value = 'reset_password';
+            if (response.data.otp) {
+                authForm.value.otp = response.data.otp;
+                demoOtpCode.value = response.data.otp;
+                demoOtpModalVisible.value = true;
+                setTimeout(() => {
+                    demoOtpModalVisible.value = false;
+                }, 7000);
+            }
+        }
+    } catch (err) {
+        authLoading.value = false;
+        authError.value = err.response?.data?.message || 'Failed to send password recovery OTP.';
+    }
+};
+
+const handleModalResetPassword = async () => {
+    if (authForm.value.password !== authForm.value.password_confirmation) {
+        authError.value = 'Passwords do not match.';
+        return;
+    }
+
+    authLoading.value = true;
+    authError.value = '';
+    authSuccess.value = '';
+    try {
+        const response = await axios.post(route('auth.phone-reset-password'), {
+            phone: authForm.value.phone,
+            otp: authForm.value.otp,
+            password: authForm.value.password,
+            password_confirmation: authForm.value.password_confirmation,
+        });
+
+        if (response.data.success) {
+            authSuccess.value = response.data.message;
+            router.reload({
+                only: ['auth', 'activeOrder'],
+                onSuccess: () => {
+                    authLoading.value = false;
+                    checkoutForm.customer_name = response.data.user.name;
+                    checkoutForm.customer_phone = response.data.user.phone;
+                },
+            });
+        }
+    } catch (err) {
+        authLoading.value = false;
+        authError.value = err.response?.data?.message || 'Password reset failed.';
+    }
+};
+
+const resendModalOtp = async () => {
+    authLoading.value = true;
+    authError.value = '';
+    try {
+        const response = await axios.post(route('auth.phone-resend-otp'), {
+            phone: authForm.value.phone,
+        });
+        authLoading.value = false;
+        authSuccess.value = response.data.message;
+        if (response.data.otp) {
+            authForm.value.otp = response.data.otp;
+            demoOtpCode.value = response.data.otp;
+            demoOtpModalVisible.value = true;
+            setTimeout(() => {
+                demoOtpModalVisible.value = false;
+            }, 7000);
+        }
+    } catch (err) {
+        authLoading.value = false;
+        authError.value = err.response?.data?.message || 'Failed to resend OTP.';
     }
 };
 
@@ -560,7 +707,247 @@ const formatNaira = (amount) => {
                     </button>
                 </div>
 
-                <div class="mt-4">
+                <!-- FAST MODAL AUTHORIZATION FOR UNAUTHENTICATED USERS -->
+                <div v-if="!authUser" class="my-4 rounded-2xl border border-amber-500/30 bg-zinc-950 p-5 space-y-4">
+                    <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                            🔒 Fast Authentication Required
+                        </span>
+                        <div class="flex rounded-lg bg-zinc-900 p-0.5 text-xs font-bold">
+                            <button
+                                type="button"
+                                @click="authMode = 'login'; authError = ''; authSuccess = '';"
+                                :class="['px-3 py-1 rounded-md transition', authMode === 'login' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white']"
+                            >
+                                Login
+                            </button>
+                            <button
+                                type="button"
+                                @click="authMode = 'register'; authError = ''; authSuccess = '';"
+                                :class="['px-3 py-1 rounded-md transition', authMode === 'register' ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white']"
+                            >
+                                Register
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Mode 1: FAST LOGIN -->
+                    <form v-if="authMode === 'login'" @submit.prevent="handleModalLogin" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Phone Number</label>
+                            <input
+                                v-model="authForm.phone"
+                                type="tel"
+                                placeholder="09031704109"
+                                required
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <label class="block text-xs font-bold uppercase text-zinc-400">Password</label>
+                                <button
+                                    type="button"
+                                    @click="authMode = 'forgot_password'; authError = ''; authSuccess = '';"
+                                    class="text-xs text-amber-400 hover:underline"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                            <input
+                                v-model="authForm.password"
+                                type="password"
+                                placeholder="••••••••"
+                                required
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            :disabled="authLoading"
+                            class="w-full rounded-xl bg-amber-500 py-2.5 text-xs font-black text-black hover:bg-amber-400 transition"
+                        >
+                            {{ authLoading ? 'Signing In...' : 'Fast Login & Continue to Order' }}
+                        </button>
+                    </form>
+
+                    <!-- Mode 2: FAST REGISTER -->
+                    <form v-else-if="authMode === 'register'" @submit.prevent="handleModalRegister" class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Full Name</label>
+                            <input
+                                v-model="authForm.name"
+                                type="text"
+                                placeholder="e.g. Amina Student"
+                                required
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Phone Number</label>
+                            <input
+                                v-model="authForm.phone"
+                                type="tel"
+                                placeholder="09031704109"
+                                required
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Password</label>
+                            <input
+                                v-model="authForm.password"
+                                type="password"
+                                placeholder="Minimum 6 characters"
+                                required
+                                minlength="6"
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <button
+                            type="submit"
+                            :disabled="authLoading"
+                            class="w-full rounded-xl bg-amber-500 py-2.5 text-xs font-black text-black hover:bg-amber-400 transition"
+                        >
+                            {{ authLoading ? 'Sending OTP SMS...' : 'Register & Send SMS OTP' }}
+                        </button>
+                    </form>
+
+                    <!-- Mode 3: OTP VERIFICATION -->
+                    <form v-else-if="authMode === 'otp'" @submit.prevent="handleModalVerifyOtp" class="space-y-3">
+                        <p class="text-xs text-amber-300">
+                            📲 Verification OTP sent to <strong>{{ authForm.phone }}</strong> via BulkSMS Nigeria. Please enter the 6-digit code below:
+                        </p>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">6-Digit Verification OTP</label>
+                            <input
+                                v-model="authForm.otp"
+                                type="text"
+                                placeholder="123456"
+                                maxlength="6"
+                                required
+                                class="w-full text-center tracking-widest text-lg font-mono rounded-xl border border-amber-500/50 bg-zinc-900 px-3 py-2 text-amber-400 focus:border-amber-400 focus:outline-none"
+                            />
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button
+                                type="button"
+                                @click="resendModalOtp"
+                                :disabled="authLoading"
+                                class="text-xs text-amber-400 underline hover:text-amber-300"
+                            >
+                                Resend SMS OTP
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="authLoading"
+                                class="rounded-xl bg-amber-500 px-4 py-2 text-xs font-black text-black hover:bg-amber-400 transition"
+                            >
+                                {{ authLoading ? 'Verifying...' : 'Verify OTP & Complete Order' }}
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Mode 4: FORGOT PASSWORD (PHONE OTP) -->
+                    <form v-else-if="authMode === 'forgot_password'" @submit.prevent="handleModalSendResetOtp" class="space-y-3">
+                        <p class="text-xs text-zinc-300">
+                            Enter your registered phone number below. We will send you a 6-digit OTP code to recover your password.
+                        </p>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Phone Number</label>
+                            <input
+                                v-model="authForm.phone"
+                                type="tel"
+                                placeholder="09031704109"
+                                required
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <button
+                                type="button"
+                                @click="authMode = 'login'; authError = ''; authSuccess = '';"
+                                class="text-xs text-zinc-400 hover:text-white underline"
+                            >
+                                Back to Login
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="authLoading"
+                                class="rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-black hover:bg-amber-400 transition"
+                            >
+                                {{ authLoading ? 'Sending OTP...' : 'Send Recovery OTP' }}
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Mode 5: RESET PASSWORD (NEW PASSWORD & OTP) -->
+                    <form v-else-if="authMode === 'reset_password'" @submit.prevent="handleModalResetPassword" class="space-y-3">
+                        <p class="text-xs text-amber-300">
+                            Enter the 6-digit recovery OTP sent to <strong>{{ authForm.phone }}</strong> and choose a new password:
+                        </p>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">6-Digit Recovery OTP</label>
+                            <input
+                                v-model="authForm.otp"
+                                type="text"
+                                placeholder="123456"
+                                maxlength="6"
+                                required
+                                class="w-full text-center tracking-widest text-lg font-mono rounded-xl border border-amber-500/50 bg-zinc-900 px-3 py-2 text-amber-400 focus:border-amber-400 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">New Password</label>
+                            <input
+                                v-model="authForm.password"
+                                type="password"
+                                placeholder="Minimum 6 characters"
+                                required
+                                minlength="6"
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-zinc-400 mb-1">Confirm New Password</label>
+                            <input
+                                v-model="authForm.password_confirmation"
+                                type="password"
+                                placeholder="Repeat new password"
+                                required
+                                minlength="6"
+                                class="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-white focus:border-amber-500 focus:outline-none"
+                            />
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <button
+                                type="button"
+                                @click="resendModalOtp"
+                                :disabled="authLoading"
+                                class="text-xs text-amber-400 underline hover:text-amber-300"
+                            >
+                                Resend OTP
+                            </button>
+                            <button
+                                type="submit"
+                                :disabled="authLoading"
+                                class="rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-black text-black hover:bg-amber-400 transition"
+                            >
+                                {{ authLoading ? 'Resetting...' : 'Reset Password & Login' }}
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Error / Success Feedback Banners -->
+                    <div v-if="authError" class="rounded-xl bg-red-950/60 border border-red-500/40 p-2.5 text-xs text-red-300 font-semibold">
+                        {{ authError }}
+                    </div>
+                    <div v-if="authSuccess" class="rounded-xl bg-emerald-950/60 border border-emerald-500/40 p-2.5 text-xs text-emerald-300 font-semibold">
+                        {{ authSuccess }}
+                    </div>
+                </div>
+
+                <div v-else class="mt-4">
                     <form @submit.prevent="submitCheckout" class="space-y-4">
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>

@@ -10,7 +10,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;
 
 class PhoneAuthController extends Controller
 {
@@ -204,6 +203,106 @@ class PhoneAuthController extends Controller
             'success' => true,
             'otp' => $otp, // Included for testing SMS modal display
             'message' => 'A new verification OTP has been sent to your phone via SMS.',
+        ]);
+    }
+
+    /**
+     * Send password reset OTP to phone.
+     */
+    public function sendResetOtp(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $normalizedPhone = PhoneNumberService::normalize($validated['phone']);
+
+        $user = User::where('phone', $normalizedPhone)
+            ->orWhere('phone', $validated['phone'])
+            ->first();
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No account found with this phone number. Please check the number or register.',
+            ], 422);
+        }
+
+        $otp = (string) rand(100000, 999999);
+        $user->update([
+            'phone_otp' => $otp,
+            'phone_otp_expires_at' => now()->addMinutes(10),
+        ]);
+
+        $smsMessage = "BoozeApp OTP: Your password reset code is {$otp}. It expires in 10 minutes.";
+        $this->smsService->sendSms($user->phone, $smsMessage);
+
+        return response()->json([
+            'success' => true,
+            'requires_reset_otp' => true,
+            'phone' => $user->phone,
+            'otp' => $otp, // Included for testing SMS modal display
+            'message' => "Password recovery OTP sent to {$user->phone} via SMS.",
+        ]);
+    }
+
+    /**
+     * Verify password reset OTP & update password.
+     */
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string',
+            'otp' => 'required|string|size:6',
+            'password' => 'required|string|min:6|confirmed',
+        ]);
+
+        $normalizedPhone = PhoneNumberService::normalize($validated['phone']);
+
+        $user = User::where('phone', $normalizedPhone)
+            ->orWhere('phone', $validated['phone'])
+            ->first();
+
+        if (! $user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User account not found.',
+            ], 422);
+        }
+
+        if (empty($user->phone_otp) || $user->phone_otp !== $validated['otp']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid OTP verification code. Please check the SMS sent to your phone.',
+            ], 422);
+        }
+
+        if ($user->phone_otp_expires_at && now()->greaterThan($user->phone_otp_expires_at)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Password reset OTP has expired. Please request a new code.',
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+            'phone_otp' => null,
+            'phone_otp_expires_at' => null,
+            'phone_verified_at' => $user->phone_verified_at ?? now(),
+        ]);
+
+        Auth::login($user, true);
+        $request->session()->regenerate();
+
+        return response()->json([
+            'success' => true,
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'phone' => $user->phone,
+                'email' => $user->email,
+            ],
+            'message' => 'Password reset successfully! You are now logged in.',
         ]);
     }
 }

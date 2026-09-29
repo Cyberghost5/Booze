@@ -18,7 +18,7 @@ const props = defineProps({
 });
 
 const activeTab = ref('orders'); // 'orders' or 'profile'
-const statusFilter = ref('all');
+const statusFilter = ref('active');
 const isLocating = ref(false);
 const locationStatus = ref('');
 const isAddingLocation = ref(false);
@@ -357,7 +357,7 @@ const formatDate = (dateStr) => {
                                     <span>🔄 1-Tap Reorder</span>
                                 </button>
                                 <Link 
-                                    v-if="order.status !== 'cancelled'"
+                                    v-if="order.status !== 'cancelled' && order.status !== 'delivered'"
                                     :href="route('consumer.orders.show', order.id)" 
                                     class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3.5 py-2 rounded-xl transition-colors inline-flex items-center space-x-1"
                                 >

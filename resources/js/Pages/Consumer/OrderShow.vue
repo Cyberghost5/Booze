@@ -80,7 +80,7 @@ const currentStepIndex = computed(() => {
     }
 });
 const cancelMyOrder = () => {
-    if (window.confirm('Are you sure you want to cancel this order? Stock will be restored and you can place a new order.')) {
+    if (window.confirm('Are you sure you want to cancel this order?')) {
         router.patch(route('consumer.orders.cancel', props.order.id), {}, {
             preserveScroll: true,
         });

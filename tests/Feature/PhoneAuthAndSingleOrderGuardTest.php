@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Order;
+use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -110,7 +111,7 @@ test('consumer can cancel their own pending order and stock level is restored', 
         'status' => 'pending',
     ]);
 
-    \App\Models\OrderItem::factory()->create([
+    OrderItem::factory()->create([
         'order_id' => $order->id,
         'product_id' => $product->id,
         'quantity' => 2,
@@ -121,4 +122,49 @@ test('consumer can cancel their own pending order and stock level is restored', 
     $response->assertRedirect();
     expect($order->fresh()->status)->toBe('cancelled')
         ->and($product->fresh()->stock_level)->toBe(12);
+});
+
+test('user can request password reset OTP via phone and reset password successfully', function () {
+    Http::fake([
+        'https://www.bulksmsnigeria.com/api/v2/sms/create' => Http::response(['status' => 'success'], 200),
+    ]);
+
+    $user = User::factory()->consumer()->create([
+        'phone' => '+2349031704109',
+        'password' => Hash::make('oldpassword123'),
+    ]);
+
+    // Step 1: Request Password Reset OTP
+    $forgotResponse = $this->post(route('auth.phone-forgot-password'), [
+        'phone' => '09031704109',
+    ]);
+
+    $forgotResponse->assertOk()
+        ->assertJson(['success' => true, 'requires_reset_otp' => true]);
+
+    $user->refresh();
+    expect($user->phone_otp)->not->toBeNull();
+
+    // Step 2: Reset Password using OTP
+    $resetResponse = $this->post(route('auth.phone-reset-password'), [
+        'phone' => '09031704109',
+        'otp' => $user->phone_otp,
+        'password' => 'newpassword123',
+        'password_confirmation' => 'newpassword123',
+    ]);
+
+    $resetResponse->assertOk()
+        ->assertJson(['success' => true]);
+
+    expect(Auth::id())->toBe($user->id);
+    expect(Hash::check('newpassword123', $user->fresh()->password))->toBeTrue();
+});
+
+test('password reset fails with invalid OTP or non-existent phone', function () {
+    $forgotResponse = $this->post(route('auth.phone-forgot-password'), [
+        'phone' => '0000000000',
+    ]);
+
+    $forgotResponse->assertStatus(422)
+        ->assertJson(['success' => false]);
 });

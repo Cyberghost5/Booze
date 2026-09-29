@@ -15,6 +15,8 @@ Route::post('/auth/phone-login', [PhoneAuthController::class, 'login'])->name('a
 Route::post('/auth/phone-register', [PhoneAuthController::class, 'register'])->name('auth.phone-register');
 Route::post('/auth/phone-verify-otp', [PhoneAuthController::class, 'verifyOtp'])->name('auth.phone-verify-otp');
 Route::post('/auth/phone-resend-otp', [PhoneAuthController::class, 'resendOtp'])->name('auth.phone-resend-otp');
+Route::post('/auth/phone-forgot-password', [PhoneAuthController::class, 'sendResetOtp'])->name('auth.phone-forgot-password');
+Route::post('/auth/phone-reset-password', [PhoneAuthController::class, 'resetPassword'])->name('auth.phone-reset-password');
 
 use App\Http\Controllers\Consumer\DeliveryLocationController;
 

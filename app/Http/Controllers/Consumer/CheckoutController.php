@@ -195,9 +195,21 @@ class CheckoutController extends Controller
             abort(403, 'Unauthorized reorder action.');
         }
 
+        // Single active order guard: Check if user already has an active order
+        $activeOrder = Order::where('user_id', $user->id)
+            ->whereIn('status', ['pending', 'packed', 'out_for_delivery'])
+            ->first();
+
+        if ($activeOrder) {
+            return redirect()->back()->withErrors([
+                'active_order' => "You already have an active order in progress (#{$activeOrder->order_number}). Please track or complete your active order first.",
+            ]);
+        }
+
         $order->load('items.product');
 
         $reorderCart = [];
+        $vendorId = $order->vendor_id;
 
         foreach ($order->items as $item) {
             if ($item->product && $item->product->is_active && $item->product->stock_level > 0) {
@@ -220,8 +232,66 @@ class CheckoutController extends Controller
             ]);
         }
 
+        // If user has saved default delivery address info, place new order directly with 1-Tap!
+        if (! empty($user->default_address) && ! empty($user->default_latitude) && ! empty($user->default_longitude)) {
+            $subtotal = 0;
+            $orderItemsData = [];
+
+            foreach ($reorderCart as $cartItem) {
+                $itemSubtotal = $cartItem['selling_price'] * $cartItem['quantity'];
+                $subtotal += $itemSubtotal;
+
+                $orderItemsData[] = [
+                    'product_id' => $cartItem['product_id'],
+                    'product_name' => $cartItem['name'],
+                    'quantity' => $cartItem['quantity'],
+                    'unit_price' => $cartItem['selling_price'],
+                    'subtotal' => $itemSubtotal,
+                ];
+            }
+
+            $deliveryFee = 500.00;
+            $total = $subtotal + $deliveryFee;
+
+            $newOrder = Order::create([
+                'user_id' => $user->id,
+                'vendor_id' => $vendorId,
+                'order_number' => 'BZ-'.strtoupper(Str::random(8)),
+                'status' => 'pending',
+                'subtotal' => $subtotal,
+                'delivery_fee' => $deliveryFee,
+                'total' => $total,
+                'customer_name' => $user->name,
+                'customer_phone' => $user->phone,
+                'delivery_address' => $user->default_address,
+                'latitude' => $user->default_latitude,
+                'longitude' => $user->default_longitude,
+                'notes' => '1-Tap Reorder',
+            ]);
+
+            foreach ($orderItemsData as $itemData) {
+                OrderItem::create([
+                    'order_id' => $newOrder->id,
+                    'product_id' => $itemData['product_id'],
+                    'product_name' => $itemData['product_name'],
+                    'quantity' => $itemData['quantity'],
+                    'unit_price' => $itemData['unit_price'],
+                    'subtotal' => $itemData['subtotal'],
+                ]);
+
+                Product::where('id', $itemData['product_id'])
+                    ->decrement('stock_level', $itemData['quantity']);
+            }
+
+            app(OrderNotificationService::class)->sendOrderPlacedNotifications($newOrder);
+
+            return redirect()->route('consumer.orders.show', $newOrder->id)
+                ->with('success', "Order #{$newOrder->order_number} reordered successfully with 1-Tap!");
+        }
+
+        // If user does not have default address set, redirect to catalog with cart loaded & ready to checkout
         return redirect()->route('consumer.catalog')
             ->with('reorderCart', $reorderCart)
-            ->with('success', "Loaded items from Order #{$order->order_number} into your cart!");
+            ->with('success', "Loaded items from Order #{$order->order_number} into your cart! Please confirm your delivery location.");
     }
 }
